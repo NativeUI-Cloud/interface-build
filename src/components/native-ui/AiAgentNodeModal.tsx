@@ -22,13 +22,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Bot, FlaskConical, ExternalLink, Info, SquareSlash, ChevronDown, Plus, Settings2, ScrollText, Database, KeyRound, CheckCircle2, AlertTriangle, XCircle, Brain, Cpu, Container, Leaf, ToyBrick, Feather } from 'lucide-react';
-import type { Node, StoredCredential } from '@/lib/types';
+import { Bot, FlaskConical, ExternalLink, Info, SquareSlash, ChevronDown, Plus, Settings2, ScrollText, Database, KeyRound, CheckCircle2, AlertTriangle, XCircle, Brain, Cpu, Container, Leaf, ToyBrick, Feather, Wrench, DollarSign, Github, FolderKanban, Package, Gitlab, KanbanSquare, DatabaseZap, Flame, NotebookText, Network, SearchCode, GitFork, ShoppingCart, Stethoscope, BookOpenCheck } from 'lucide-react';
+import type { Node, StoredCredential, AnyToolConfig, AgentTemplate } from '@/lib/types';
 import ChatModelSelectionModal from './ChatModelSelectionModal';
 import { getCredentialById } from '@/lib/credentialsStore';
 import { getAllChatModels } from '@/lib/llmProviders';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ActionListItem from './ActionListItem';
+import { agentTemplates } from '@/lib/agentTemplates'; // Import templates
 
 
 interface AiAgentNodeModalProps {
@@ -36,12 +37,22 @@ interface AiAgentNodeModalProps {
   onOpenChange: (isOpen: boolean) => void;
   node?: Node | null;
   onNodeConfigChange: (nodeId: string, data: Partial<Node['data']>) => void;
+  onOpenToolConfiguration: (agentNodeId: string, toolType: string, existingToolId?: string) => void;
+  onOpenGitHubApiCredentialModal: (agentNodeId: string, existingToolId?: string) => void; 
   initialSection?: string; 
 }
 
-type PromptSource = 'chat-trigger' | 'custom';
+type PromptSource = 'chat-trigger' | 'system-prompt';
 
-export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeConfigChange, initialSection }: AiAgentNodeModalProps) {
+export default function AiAgentNodeModal({ 
+  isOpen, 
+  onOpenChange, 
+  node, 
+  onNodeConfigChange, 
+  onOpenToolConfiguration,
+  onOpenGitHubApiCredentialModal,
+  initialSection 
+}: AiAgentNodeModalProps) {
   const modalTitle = node?.name || 'AI Agent';
   const [isChatModelModalOpen, setIsChatModelModalOpen] = useState(false);
   
@@ -51,25 +62,38 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
 
 
   const [promptSource, setPromptSource] = useState<PromptSource>('chat-trigger');
-  const [customPrompt, setCustomPrompt] = useState<string>('');
+  const [systemPrompt, setSystemPrompt] = useState<string>(''); // Renamed from customPrompt
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(node?.data?.templateId);
+  const [loadedTemplateDescription, setLoadedTemplateDescription] = useState<string | undefined>(undefined);
+  const [loadedTemplateSuggestedTools, setLoadedTemplateSuggestedTools] = useState<string[] | undefined>(undefined);
 
-  // Define memory options
+
   const memoryOptions = [
     { id: 'simple', title: 'Simple Memory', description: 'Stores in n8n memory, so no credentials required', icon: Database },
     { id: 'motorhead', title: 'Motorhead', description: 'Use Motorhead Memory', icon: Cpu },
-    { id: 'postgres', title: 'Postgres Chat Memory', description: 'Stores the chat history in Postgres table.', icon: Container }, // Using generic Database icon
+    { id: 'postgres', title: 'Postgres Chat Memory', description: 'Stores the chat history in Postgres table.', icon: Container },
     { id: 'mongodb', title: 'MongoDB Chat Memory', description: 'Stores the chat history in MongoDB collection.', icon: Leaf },
-    { id: 'redis', title: 'Redis Chat Memory', description: 'Stores the chat history in Redis.', icon: Container }, // Using generic Database icon
-    { id: 'xata', title: 'Xata', description: 'Use Xata Memory', icon: Feather }, // Placeholder icon
-    { id: 'zep', title: 'Zep', description: 'Use Zep Memory', icon: ToyBrick }, // Placeholder icon
+    { id: 'redis', title: 'Redis Chat Memory', description: 'Stores the chat history in Redis.', icon: Container },
+    { id: 'xata', title: 'Xata', description: 'Use Xata Memory', icon: Feather },
+    { id: 'zep', title: 'Zep', description: 'Use Zep Memory', icon: ToyBrick },
   ];
   const [selectedMemory, setSelectedMemory] = useState<string | null>(node?.data?.memoryType || null);
 
   useEffect(() => {
     if (isOpen && node?.data) {
       setPromptSource(node.data.promptSource || 'chat-trigger');
-      setCustomPrompt(node.data.customPrompt || '');
+      setSystemPrompt(node.data.systemPrompt || ''); // Use systemPrompt
       setSelectedMemory(node.data.memoryType || null);
+      setSelectedTemplateId(node.data.templateId);
+
+      if (node.data.templateId) {
+        const template = agentTemplates.find(t => t.id === node.data.templateId);
+        setLoadedTemplateDescription(template?.description);
+        setLoadedTemplateSuggestedTools(template?.suggestedToolTypes);
+      } else {
+        setLoadedTemplateDescription(undefined);
+        setLoadedTemplateSuggestedTools(undefined);
+      }
       
       if (node.data.chatModelCredentialStatus) {
         setCurrentCredentialStatus(node.data.chatModelCredentialStatus);
@@ -103,10 +127,13 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
       setSelectedChatModelName(null);
       setCurrentCredentialStatus(null);
       setCurrentCredentialValidationError(undefined);
+      setLoadedTemplateDescription(undefined);
+      setLoadedTemplateSuggestedTools(undefined);
       if (!node) { 
         setPromptSource('chat-trigger');
-        setCustomPrompt('');
+        setSystemPrompt('');
         setSelectedMemory(null);
+        setSelectedTemplateId(undefined);
       }
     }
   }, [isOpen, node?.data]);
@@ -119,11 +146,39 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
     }
   };
 
-  const handleCustomPromptChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const handleSystemPromptChange = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newPrompt = event.target.value;
-    setCustomPrompt(newPrompt);
-    if (node && promptSource === 'custom') {
-      onNodeConfigChange(node.id, { ...node.data, customPrompt: newPrompt });
+    setSystemPrompt(newPrompt);
+    if (node) {
+      onNodeConfigChange(node.id, { ...node.data, systemPrompt: newPrompt, templateId: undefined }); // Clear templateId if prompt is manually edited
+      setSelectedTemplateId(undefined);
+      setLoadedTemplateDescription(undefined);
+      setLoadedTemplateSuggestedTools(undefined);
+    }
+  };
+
+  const handleTemplateSelect = (templateId: string) => {
+    const selectedTemplate = agentTemplates.find(t => t.id === templateId);
+    if (selectedTemplate && node) {
+      setSystemPrompt(selectedTemplate.systemPrompt);
+      setPromptSource('system-prompt'); // Assume template implies system prompt
+      setSelectedTemplateId(selectedTemplate.id);
+      setLoadedTemplateDescription(selectedTemplate.description);
+      setLoadedTemplateSuggestedTools(selectedTemplate.suggestedToolTypes);
+      onNodeConfigChange(node.id, { 
+        ...node.data, 
+        systemPrompt: selectedTemplate.systemPrompt,
+        promptSource: 'system-prompt',
+        templateId: selectedTemplate.id 
+      });
+    } else if (templateId === "none" && node) {
+      // User selected "No Template" or similar
+      setSelectedTemplateId(undefined);
+      // Optionally clear the prompt or revert to a default, or just let user manage it.
+      // For now, just clear template tracking. User can clear prompt manually if desired.
+      setLoadedTemplateDescription(undefined);
+      setLoadedTemplateSuggestedTools(undefined);
+      onNodeConfigChange(node.id, { ...node.data, templateId: undefined });
     }
   };
 
@@ -149,7 +204,15 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
       onNodeConfigChange(node.id, { ...node.data, memoryType: memoryId });
     }
     console.log(`Memory selected: ${memoryId}`);
-    // Further configuration for the selected memory type can be handled here or open a new modal
+  };
+  
+  const handleAddOrConfigureTool = (toolType: string) => {
+    if (node) {
+      const existingTool = node.data?.tools?.find(t => t.type === toolType);
+      // Always open configuration, whether new or existing.
+      // The tool-specific modal or credential manager will handle "new" vs "edit".
+      onOpenToolConfiguration(node.id, toolType, existingTool?.id);
+    }
   };
 
   const getStatusIconAndColor = () => {
@@ -162,6 +225,22 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
   };
   const { icon: statusIcon, color: statusColor } = getStatusIconAndColor();
 
+  const availableTools = [
+    { type: 'COINGECKO', title: 'CoinGecko Tool', description: 'Consume CoinGecko API for cryptocurrency data.', icon: DollarSign },
+    { type: 'GITHUB_API', title: 'GitHub API Tool', description: 'Interact with the GitHub API.', icon: Github },
+    { type: 'GOOGLE_DRIVE_API', title: 'Google Drive Tool', description: 'Interact with Google Drive files.', icon: FolderKanban },
+    { type: 'DROPBOX_API', title: 'Dropbox Tool', description: 'Interact with Dropbox files.', icon: Package },
+    { type: 'GITLAB_API', title: 'GitLab API Tool', description: 'Interact with GitLab repositories.', icon: Gitlab },
+    { type: 'TRELLO_API', title: 'Trello Tool', description: 'Manage Trello boards and cards.', icon: KanbanSquare },
+    { type: 'BITQUERY_API', title: 'Bitquery API Tool', description: 'Access blockchain data via Bitquery GraphQL API.', icon: DatabaseZap },
+    { type: 'FIREBASE_TOOL', title: 'Firebase Tool', description: 'Interact with Firebase services.', icon: Flame },
+    { type: 'NOTION_TOOL', title: 'Notion Tool', description: 'Interact with Notion pages and databases.', icon: NotebookText },
+    { type: 'BLOCKCHAIN_DATA_TOOL', title: 'Blockchain Data Tool', description: 'Fetch data from various blockchains.', icon: Network },
+    { type: 'ETHERSCAN_API', title: 'Etherscan API Tool', description: 'Query Etherscan-like blockchain explorers.', icon: SearchCode },
+    { type: 'THE_GRAPH_API', title: 'The Graph Tool', description: 'Query subgraphs from The Graph Protocol.', icon: GitFork },
+    { type: 'SHOPIFY_ADMIN_TOOL', title: 'Shopify Admin Tool', description: 'Interact with Shopify stores via Admin API.', icon: ShoppingCart },
+    { type: 'PUBMED_SEARCH_TOOL', title: 'PubMed Search Tool', description: 'Search for medical literature on PubMed.', icon: Stethoscope },
+  ];
 
   return (
     <>
@@ -189,7 +268,7 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
           </DialogHeader>
 
           <Tabs defaultValue={initialSection || "parameters"} className="w-full">
-            <TabsList className="grid w-full grid-cols-3 rounded-none border-b border-border bg-transparent p-0">
+            <TabsList className="grid w-full grid-cols-4 rounded-none border-b border-border bg-transparent p-0">
               <TabsTrigger value="parameters" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none">
                 <ScrollText className="mr-2 h-5 w-5" />
                 Parameters
@@ -197,6 +276,10 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
                <TabsTrigger value="memory" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none">
                 <Brain className="mr-2 h-5 w-5" />
                 Memory
+              </TabsTrigger>
+              <TabsTrigger value="tools" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none">
+                <Wrench className="mr-2 h-5 w-5" />
+                Tools
               </TabsTrigger>
               <TabsTrigger value="settings" className="py-3 data-[state=active]:border-b-2 data-[state=active]:border-primary data-[state=active]:shadow-none rounded-none">
                 <Settings2 className="mr-2 h-5 w-5" />
@@ -216,6 +299,43 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
                 </Alert>
 
                 <div className="space-y-2">
+                  <Label htmlFor="template-select">Load Template (Optional)</Label>
+                  <Select value={selectedTemplateId || "none"} onValueChange={handleTemplateSelect}>
+                    <SelectTrigger id="template-select" className="bg-background">
+                      <SelectValue placeholder="Select a template..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">No Template (Custom)</SelectItem>
+                      {agentTemplates.map(template => (
+                        <SelectItem key={template.id} value={template.id}>
+                          <div className="flex items-center">
+                            {template.icon && <template.icon className="mr-2 h-4 w-4 text-muted-foreground" />}
+                            {template.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {selectedTemplateId && loadedTemplateDescription && (
+                    <Alert variant="default" className="mt-2 border-border bg-muted/30">
+                      <BookOpenCheck className="h-5 w-5 text-muted-foreground"/>
+                      <AlertTitle className="font-medium text-foreground/90">
+                        Template: {agentTemplates.find(t=>t.id === selectedTemplateId)?.name}
+                      </AlertTitle>
+                      <AlertDescription className="text-xs text-muted-foreground">
+                        {loadedTemplateDescription}
+                        {loadedTemplateSuggestedTools && loadedTemplateSuggestedTools.length > 0 && (
+                          <div className="mt-1">
+                            <strong>Suggested Tools:</strong> {loadedTemplateSuggestedTools.join(', ')}. Configure these in the 'Tools' tab.
+                          </div>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+
+
+                <div className="space-y-2">
                   <Label htmlFor="source-prompt">Source for Prompt (User Message)</Label>
                   <Select 
                     value={promptSource} 
@@ -226,29 +346,29 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="chat-trigger">Connected Chat Trigger Node</SelectItem>
-                      <SelectItem value="custom">Custom Input</SelectItem>
+                      <SelectItem value="system-prompt">Use System Prompt Below</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="prompt">Prompt (User Message)</Label>
+                  <Label htmlFor="system-prompt">System Prompt (Guides AI Behavior)</Label>
                   <div className="relative">
                     <Textarea
-                      id="prompt"
-                      value={promptSource === 'custom' ? customPrompt : "{{ $json.chatInput }}"}
-                      onChange={handleCustomPromptChange}
+                      id="system-prompt"
+                      value={promptSource === 'system-prompt' ? systemPrompt : (promptSource === 'chat-trigger' ? "{{ $json.chatInput }}" : systemPrompt)}
+                      onChange={handleSystemPromptChange}
                       disabled={promptSource === 'chat-trigger'}
-                      placeholder={promptSource === 'custom' ? 'Enter your custom prompt here...' : ''}
+                      placeholder={promptSource === 'system-prompt' ? 'Enter your system prompt here (e.g., You are a helpful assistant)...' : 'Input will come from Chat Trigger'}
                       className="bg-background min-h-[100px] pr-10"
-                      rows={4}
+                      rows={6}
                     />
                     <Button variant="ghost" size="icon" className="absolute top-2 right-2 h-7 w-7 text-muted-foreground hover:text-foreground">
                       <SquareSlash className="h-4 w-4" />
                       <span className="sr-only">Edit expression</span>
                     </Button>
                   </div>
-                  {promptSource === 'chat-trigger' && <p className="text-xs text-destructive">[ERROR: No input connected]</p> }
+                  {promptSource === 'chat-trigger' && node?.data?.inputConnected === false && <p className="text-xs text-destructive">[WARN: Chat Trigger input not connected on canvas]</p> }
                 </div>
 
                 <div className="flex items-center justify-between space-x-2">
@@ -297,6 +417,47 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
                     </AlertDescription>
                   </Alert>
                 )}
+              </TabsContent>
+
+              <TabsContent value="tools" className="mt-0 space-y-4">
+                 <Alert variant="default" className="border-border bg-muted/50">
+                  <Wrench className="h-5 w-5 text-foreground/70" />
+                  <AlertDescription className="text-foreground/80">
+                    Tools allow AI Agents to interact with external services or perform specific actions.
+                  </AlertDescription>
+                </Alert>
+                <div className="space-y-2">
+                  {node?.data?.tools && node.data.tools.length > 0 && (
+                    <div className="mb-4">
+                      <Label className="text-sm font-medium">Configured Tools:</Label>
+                      {node.data.tools.map((tool: AnyToolConfig) => {
+                        const toolDef = availableTools.find(at => at.type === tool.type);
+                        return (
+                         <ActionListItem
+                          key={tool.id}
+                          icon={toolDef?.icon || Settings2}
+                          title={toolDef?.title || `${tool.type.replace(/_API|_TOOL/gi, '')} Tool`}
+                          description={`ID: ${tool.id.substring(0,8)}... - Click to reconfigure`}
+                          onClick={() => handleAddOrConfigureTool(tool.type)} // Will open config for this existing tool
+                          className={'bg-muted/30'}
+                        />
+                        );
+                      })}
+                    </div>
+                  )}
+
+                  <Label className="text-sm font-medium">Available Tools to Add:</Label>
+                   {availableTools.map(tool => (
+                     <ActionListItem
+                      key={tool.type}
+                      icon={tool.icon}
+                      title={tool.title}
+                      description={tool.description}
+                      onClick={() => handleAddOrConfigureTool(tool.type)} // Will open config for adding this new tool
+                      className="hover:bg-muted/30"
+                    />
+                   ))}
+                </div>
               </TabsContent>
 
               <TabsContent value="settings" className="mt-0">
@@ -351,12 +512,7 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
                 size="icon" 
                 className="rounded-full bg-background hover:bg-accent/10"
                 onClick={() => {
-                    // This logic is now handled by Tabs and initialSection
-                    // To programmatically switch, you'd need to manage Tabs value state here
-                    // For now, clicking the node's memory button opens the modal,
-                    // and the user can click the Memory tab.
-                    // If this button *inside* the modal should switch tabs, that's different.
-                    console.log("Memory button in footer clicked - tab switching handled by Tabs component");
+                  // Consider focusing the Memory tab if already in this modal
                 }}
               >
                 <Database className="h-5 w-5" />
@@ -365,7 +521,15 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
             </div>
             <div className="flex flex-col items-center gap-1">
               <Label htmlFor="tool-btn" className="text-xs text-muted-foreground">Tool</Label>
-              <Button id="tool-btn" variant="outline" size="icon" className="rounded-full bg-background hover:bg-accent/10">
+              <Button 
+                id="tool-btn" 
+                variant={node?.data?.tools && node.data.tools.length > 0 ? "default" : "outline"}
+                size="icon" 
+                className="rounded-full bg-background hover:bg-accent/10"
+                onClick={() => {
+                  // Consider focusing the Tools tab
+                }}
+              >
                 <Settings2 className="h-5 w-5" />
                 <span className="sr-only">Add Tool</span>
               </Button>
@@ -385,4 +549,3 @@ export default function AiAgentNodeModal({ isOpen, onOpenChange, node, onNodeCon
     </>
   );
 }
-

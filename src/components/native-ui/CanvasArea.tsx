@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react'; 
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   FlaskConical,
   Maximize2,
@@ -12,7 +12,7 @@ import {
   RefreshCw,
   RotateCw,
   Send,
-  Sparkles, 
+  Sparkles,
   Trash2,
   Users,
   X,
@@ -23,6 +23,10 @@ import {
   Download,
   Settings,
   LifeBuoy,
+  UploadCloud,
+  Link,
+  Power, 
+  Play,  
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,6 +38,7 @@ import AiAgentNode from './AiAgentNode';
 import ConnectedChatModelNode from './ConnectedChatModelNode';
 import ChatTriggerNode from './ChatTriggerNode';
 import TelegramTriggerNode from './TelegramTriggerNode';
+import CoinGeckoToolDisplayNode from './CoinGeckoToolDisplayNode';
 import { cn } from '@/lib/utils';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -47,13 +52,15 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { v4 as uuidv4 } from 'uuid';
 
 
-interface CanvasAreaProps extends React.HTMLAttributes<HTMLDivElement> { 
+interface CanvasAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   workflowName: string;
   onWorkflowNameChange: (name: string) => void;
   onCreateNewWorkflow: () => void;
-  onOpenMyWorkflows: () => void; 
+  onOpenMyWorkflows: () => void;
   onExplicitSave: () => void;
-  onOpenShareModal: () => void; 
+  onOpenShareModal: () => void;
+  onImportFromUrl: () => void;
+  onImportFromFile: () => void;
   activeNodes: Node[];
   connections: Connection[];
   drawingLine: { fromNodeId: string; fromConnectorId: string; fromPosition: { x: number; y: number }; toPosition: { x: number; y: number } } | null;
@@ -67,28 +74,38 @@ interface CanvasAreaProps extends React.HTMLAttributes<HTMLDivElement> {
   onToggleMaximize: () => void;
   onToggleWorkflowChatPanel: () => void;
   isWorkflowChatPanelVisible: boolean;
-  onToggleAiAssistantPanel: () => void; 
+  onToggleAiAssistantPanel: () => void;
   onRedo: () => void;
   onAutoLayout: () => void;
   onStartLineDraw: (nodeId: string, connectorId: string, globalPosition: { x: number, y: number }, event: React.MouseEvent) => void;
   onConnectorMouseUp: (nodeId: string, connectorId: string, connectorType: 'input' | 'output', globalPosition: { x: number, y: number }, event: React.MouseEvent) => void;
   onCanvasMouseMove: (event: React.MouseEvent<HTMLDivElement>) => void;
   onCanvasMouseUp: (event: React.MouseEvent<HTMLDivElement>) => void;
-  onCanvasMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void; // For panning
+  onCanvasMouseDown: (event: React.MouseEvent<HTMLDivElement>) => void;
   onDeleteConnection: (connectionId: string) => void;
   onAddNodeOnConnection: (connectionId: string) => void;
   workflowChatMessages: { id: string; text: string; sender: 'user' | 'ai' | 'system' }[];
   onWorkflowChatSend: (message: string) => void;
   isWorkflowAiResponding: boolean;
-  processingNodeId: string | null; // To highlight the processing node
-  className?: string; 
+  processingNodeId: string | null;
+  onToggleNodeDisabled: (nodeId: string) => void;
+  onDeleteNode: (nodeId: string) => void;
+  onMoreNodeOptions: (nodeId: string) => void;
+  className?: string;
 }
 
 const AI_AGENT_NODE_WIDTH = 256;
 const AI_AGENT_NODE_MIN_HEIGHT = 120;
-const AI_AGENT_CONNECTOR_AREA_TOTAL_HEIGHT = 54;
 const DIAMOND_ICON_HEIGHT = 12;
+const AI_AGENT_CONNECTOR_AREA_HEIGHT = 38;
+const SPACING_BELOW_AI_NODE_CONNECTORS = 40;
+
 const CONNECTED_MODEL_NODE_WIDTH = 200;
+const CONNECTED_MODEL_NODE_HEIGHT = 60;
+
+const COINGECKO_TOOL_NODE_WIDTH = 200;
+const COINGECKO_TOOL_NODE_HEIGHT = 60;
+
 const TRIGGER_NODE_WIDTH = 224;
 const TRIGGER_NODE_HEIGHT = 80;
 
@@ -97,31 +114,55 @@ const getConnectorPosition = (node: Node, connectorId: string): { x: number; y: 
   if (!node.position) return null;
   const { x, y } = node.position;
 
-  let connectorX = x + (node.type === 'AI_AGENT' ? AI_AGENT_NODE_WIDTH : (node.type === 'CONNECTED_CHAT_MODEL' ? CONNECTED_MODEL_NODE_WIDTH : TRIGGER_NODE_WIDTH)) / 2;
-  let connectorY = y + (node.type === 'AI_AGENT' ? AI_AGENT_NODE_MIN_HEIGHT : (node.type === 'CONNECTED_CHAT_MODEL' ? 60 : TRIGGER_NODE_HEIGHT)) / 2;
+  let connectorX = x;
+  let connectorY = y;
 
-
-  if (node.type === 'AI_AGENT') {
-    if (connectorId === 'input-trigger') {
-      connectorX = x; 
-      connectorY = y + AI_AGENT_NODE_MIN_HEIGHT / 2; 
-    } else if (connectorId === 'output-main') {
-      connectorX = x + AI_AGENT_NODE_WIDTH; 
-      connectorY = y + AI_AGENT_NODE_MIN_HEIGHT / 2; 
-    } else if (connectorId === 'chat-model-output') { 
-      connectorX = x + (AI_AGENT_NODE_WIDTH / 6); 
-      connectorY = y + AI_AGENT_NODE_MIN_HEIGHT + DIAMOND_ICON_HEIGHT + 4; // Adjusted for diamond icon center
-    }
-  } else if (node.type === 'CHAT_TRIGGER' || node.type === 'TELEGRAM_TRIGGER') {
-    if (connectorId === 'output') {
-      connectorX = x + TRIGGER_NODE_WIDTH; 
-      connectorY = y + TRIGGER_NODE_HEIGHT / 2; 
-    }
-  } else if (node.type === 'CONNECTED_CHAT_MODEL') {
-     if (connectorId === 'input') { 
-      connectorX = x + CONNECTED_MODEL_NODE_WIDTH / 2;
-      connectorY = y; 
-     }
+  switch (node.type) {
+    case 'AI_AGENT':
+      if (connectorId === 'input-trigger') {
+        connectorX = x;
+        connectorY = y + AI_AGENT_NODE_MIN_HEIGHT / 2;
+      } else if (connectorId === 'output-main') {
+        connectorX = x + AI_AGENT_NODE_WIDTH;
+        connectorY = y + AI_AGENT_NODE_MIN_HEIGHT / 2;
+      } else if (connectorId === 'output-chat-model') {
+        // Positioned at the first diamond icon's center below the node
+        connectorX = x + (AI_AGENT_NODE_WIDTH / 6); // Approx 1/3 of the way for 3 buttons
+        connectorY = y + AI_AGENT_NODE_MIN_HEIGHT + DIAMOND_ICON_HEIGHT / 2 + 4; // 4px is approx spacing for diamond
+      } else if (connectorId === 'output-memory') {
+        // Positioned at the second diamond icon's center below the node
+        connectorX = x + (AI_AGENT_NODE_WIDTH / 2); // Center for 3 buttons
+        connectorY = y + AI_AGENT_NODE_MIN_HEIGHT + DIAMOND_ICON_HEIGHT / 2 + 4;
+      } else if (connectorId === 'output-tools') {
+        // Positioned at the third diamond icon's center below the node
+        connectorX = x + (AI_AGENT_NODE_WIDTH * 5/6); // Approx 2/3 of the way for 3 buttons
+        connectorY = y + AI_AGENT_NODE_MIN_HEIGHT + DIAMOND_ICON_HEIGHT / 2 + 4;
+      } else {
+        connectorX = x + AI_AGENT_NODE_WIDTH / 2;
+        connectorY = y + AI_AGENT_NODE_MIN_HEIGHT / 2;
+      }
+      break;
+    case 'CHAT_TRIGGER':
+    case 'TELEGRAM_TRIGGER':
+      if (connectorId === 'output') {
+        connectorX = x + TRIGGER_NODE_WIDTH;
+        connectorY = y + TRIGGER_NODE_HEIGHT / 2;
+      }
+      break;
+    case 'CONNECTED_CHAT_MODEL':
+      if (connectorId === 'input-main') {
+        connectorX = x + CONNECTED_MODEL_NODE_WIDTH / 2;
+        connectorY = y; // Top-center for input
+      }
+      break;
+    case 'COINGECKO_TOOL_DISPLAY_NODE':
+       if (connectorId === 'input-main') {
+        connectorX = x + COINGECKO_TOOL_NODE_WIDTH / 2;
+        connectorY = y; // Top-center for input
+      }
+      break;
+    default:
+      return { x: x + (node.data?.width || 100) / 2, y: y + (node.data?.height || 50) / 2 };
   }
   return { x: connectorX, y: connectorY };
 };
@@ -131,9 +172,11 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
   workflowName,
   onWorkflowNameChange,
   onCreateNewWorkflow,
-  onOpenMyWorkflows, 
+  onOpenMyWorkflows,
   onExplicitSave,
   onOpenShareModal,
+  onImportFromUrl,
+  onImportFromFile,
   activeNodes,
   connections,
   drawingLine,
@@ -151,7 +194,7 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
   onRedo,
   onAutoLayout,
   onStartLineDraw,
-  onConnectorMouseUp, 
+  onConnectorMouseUp,
   onCanvasMouseMove,
   onCanvasMouseUp,
   onCanvasMouseDown,
@@ -161,8 +204,11 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
   onWorkflowChatSend,
   isWorkflowAiResponding,
   processingNodeId,
-  className, 
-  ...props 
+  onToggleNodeDisabled,
+  onDeleteNode,
+  onMoreNodeOptions,
+  className,
+  ...props
 }, ref) => {
   const [workflowChatInput, setWorkflowChatInput] = useState('');
   const workflowChatScrollAreaRef = useRef<HTMLDivElement>(null);
@@ -186,11 +232,11 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
        setLocalWorkflowName(workflowName);
     }
   };
-  
+
   const handleNameInputKeyPress = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       handleNameInputBlur();
-      (event.target as HTMLInputElement).blur(); 
+      (event.target as HTMLInputElement).blur();
     }
   };
 
@@ -216,7 +262,7 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
   return (
     <div className={cn("flex h-full flex-col bg-card text-card-foreground", className)} {...props}>
       {/* Top Controls Bar */}
-      <div className="flex items-center justify-between p-3 border-b border-border">
+      <div className="flex items-center justify-between p-3 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
           <TooltipProvider>
             <Tooltip>
@@ -265,9 +311,9 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
             <Label htmlFor="workflow-status" className="text-sm text-muted-foreground">
               {workflowStatusActive ? 'Active' : 'Inactive'}
             </Label>
-            <Switch 
-              id="workflow-status" 
-              checked={workflowStatusActive} 
+            <Switch
+              id="workflow-status"
+              checked={workflowStatusActive}
               onCheckedChange={(checked) => { setWorkflowStatusActive(checked); console.log('Workflow status changed to:', checked); }}
             />
           </div>
@@ -283,15 +329,31 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-popover text-popover-foreground">
-              <DropdownMenuItem onClick={() => console.log('Export workflow clicked')}>
-                <Download className="mr-2 h-4 w-4" />
-                Export Workflow
+              <DropdownMenuItem onClick={() => console.log('Duplicate workflow clicked')}>
+                <FilePlus2 className="mr-2 h-4 w-4" />
+                Duplicate
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => console.log('Download workflow clicked')}>
+                <Download className="mr-2 h-4 w-4" />
+                Download
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onImportFromUrl}>
+                <Link className="mr-2 h-4 w-4" />
+                Import from URL...
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={onImportFromFile}>
+                <UploadCloud className="mr-2 h-4 w-4" />
+                Import from File...
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => console.log('Push to Git clicked')}>
+                Push to Git
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => console.log('Workflow settings clicked')}>
                 <Settings className="mr-2 h-4 w-4" />
                 Workflow Settings
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => console.log('Help clicked')}>
                 <LifeBuoy className="mr-2 h-4 w-4" />
                 Help & Documentation
@@ -303,7 +365,7 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
 
       {/* Viewport for canvas and overlay buttons */}
       <div
-        className="flex-grow relative overflow-auto cursor-grab bg-zinc-800" 
+        className="flex-grow relative overflow-auto cursor-grab bg-zinc-800"
         ref={ref}
         onMouseMove={onCanvasMouseMove}
         onMouseUp={onCanvasMouseUp}
@@ -312,16 +374,16 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
         <>
           {/* Scalable Container */}
           <div
-            className="relative p-4 bg-zinc-800 min-h-full min-w-full" 
+            className="relative p-4 bg-zinc-800 min-h-full min-w-full"
             style={{
               transformOrigin: 'top left',
               transform: `scale(${zoomLevel})`,
-              width: `${100 / zoomLevel}%`, 
-              height: `${100 / zoomLevel}%`, 
+              width: `${100 / zoomLevel}%`,
+              height: `${100 / zoomLevel}%`,
             }}
             data-canvas-area="true"
             data-ai-hint="workflow background"
-            onMouseDown={onCanvasMouseDown} 
+            onMouseDown={onCanvasMouseDown}
           >
             <svg width="100%" height="100%" className="absolute inset-0 pointer-events-none">
               <defs>
@@ -334,48 +396,47 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
               </defs>
               <rect width="100%" height="100%" fill="url(#dotGrid)" />
 
-              {connections.map((conn) => {
+              {Array.isArray(connections) && connections.map((conn) => {
                 const fromNode = activeNodes.find(n => n.id === conn.fromNodeId);
                 const toNode = activeNodes.find(n => n.id === conn.toNodeId);
                 if (!fromNode || !toNode) return null;
                 const startPos = getConnectorPosition(fromNode, conn.fromConnectorId);
                 const endPos = getConnectorPosition(toNode, conn.toConnectorId);
                 if (!startPos || !endPos) return null;
+
+                let strokeColor = "rgba(156, 163, 175, 0.7)"; // Default gray
+                let strokeDash = undefined;
+
+                if (conn.fromConnectorId === 'output-chat-model' || (conn.toConnectorId === 'input-main' && toNode.type === 'CONNECTED_CHAT_MODEL')) {
+                    strokeColor = "rgba(59, 130, 246, 0.7)"; // Blue for chat model connections
+                    strokeDash = "5,5";
+                } else if (conn.fromConnectorId === 'output-tools' || (conn.toConnectorId === 'input-main' && toNode.type === 'COINGECKO_TOOL_DISPLAY_NODE')) {
+                    strokeColor = "rgba(34, 197, 94, 0.7)"; // Green for tool connections
+                    strokeDash = "5,5";
+                } else if ((fromNode.type === 'CHAT_TRIGGER' || fromNode.type === 'TELEGRAM_TRIGGER') && toNode.type === 'AI_AGENT') {
+                    strokeColor = "rgba(239, 68, 68, 0.8)"; // Red for trigger to agent
+                }
+
+
                 return (
                   <line
                     key={conn.id}
                     x1={startPos.x} y1={startPos.y}
                     x2={endPos.x} y2={endPos.y}
-                    stroke="rgba(239, 68, 68, 0.9)" strokeWidth="2.5" markerEnd="url(#arrowhead)" 
+                    stroke={strokeColor}
+                    strokeWidth="2.5"
+                    markerEnd="url(#arrowhead)"
+                    strokeDasharray={strokeDash}
                   />
                 );
               })}
 
-              {activeNodes.map((parentNode) => {
-                if (parentNode.type === 'AI_AGENT' && parentNode.data?.connectedChatModelNodeId && parentNode.position) {
-                  const connectedNode = activeNodes.find(n => n.id === parentNode.data!.connectedChatModelNodeId && n.type === 'CONNECTED_CHAT_MODEL');
-                  if (connectedNode && connectedNode.position) {
-                    const lineStartPos = getConnectorPosition(parentNode, 'chat-model-output');
-                    const lineEndPos = getConnectorPosition(connectedNode, 'input');
-                    if (!lineStartPos || !lineEndPos) return null;
-                    return (
-                      <line
-                        key={`line-cm-${parentNode.id}-to-${connectedNode.id}`}
-                        x1={lineStartPos.x} y1={lineStartPos.y}
-                        x2={lineEndPos.x} y2={lineEndPos.y}
-                        stroke="rgba(100, 180, 255, 0.7)" strokeWidth="2" strokeDasharray="5,5" markerEnd="url(#arrowhead)"
-                      />
-                    );
-                  }
-                }
-                return null;
-              })}
 
               {drawingLine && (
                 <line
                   x1={drawingLine.fromPosition.x} y1={drawingLine.fromPosition.y}
                   x2={drawingLine.toPosition.x} y2={drawingLine.toPosition.y}
-                  stroke="rgba(255, 255, 0, 0.8)" strokeWidth="2.5" strokeDasharray="4,4" markerEnd="url(#arrowhead)"
+                  stroke="rgba(250, 204, 21, 0.8)" strokeWidth="2.5" strokeDasharray="4,4" markerEnd="url(#arrowhead)"
                 />
               )}
             </svg>
@@ -390,6 +451,9 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
                     onNodeDoubleClick={() => onNodeDoubleClick(node.id)} onOpenConfiguration={onNodeConfigureSection}
                     onStartLineDraw={onStartLineDraw} onConnectorMouseUp={onConnectorMouseUp}
                     isProcessing={node.id === processingNodeId}
+                    onToggleDisabled={onToggleNodeDisabled}
+                    onDeleteNode={onDeleteNode}
+                    onMoreOptions={onMoreNodeOptions}
                   />
                 );
               } else if (node.type === 'CONNECTED_CHAT_MODEL' && node.data && node.position) {
@@ -400,12 +464,23 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
                     isDragging={node.id === draggingNodeId}
                   />
                 );
+              } else if (node.type === 'COINGECKO_TOOL_DISPLAY_NODE' && node.data && node.position) {
+                return (
+                  <CoinGeckoToolDisplayNode
+                    key={node.id} id={node.id} nodeData={node.data} position={node.position}
+                    onMouseDown={(e) => onNodeDragStart(node.id, e)}
+                    isDragging={node.id === draggingNodeId}
+                  />
+                );
               } else if (node.type === 'CHAT_TRIGGER' && node.position) {
                 return (
                   <ChatTriggerNode
                     key={node.id} id={node.id} name={node.name} data={node.data} position={node.position}
                     onMouseDown={(e) => onNodeDragStart(node.id, e)} isDragging={node.id === draggingNodeId}
                     onStartLineDraw={onStartLineDraw} onConnectorMouseUp={onConnectorMouseUp}
+                    onToggleDisabled={onToggleNodeDisabled}
+                    onDeleteNode={onDeleteNode}
+                    onMoreOptions={onMoreNodeOptions}
                   />
                 );
               } else if (node.type === 'TELEGRAM_TRIGGER' && node.position) {
@@ -413,7 +488,11 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
                   <TelegramTriggerNode
                     key={node.id} id={node.id} name={node.name} data={node.data} position={node.position}
                     onMouseDown={(e) => onNodeDragStart(node.id, e)} isDragging={node.id === draggingNodeId}
+                    onNodeDoubleClick={() => onNodeDoubleClick(node.id)}
                     onStartLineDraw={onStartLineDraw} onConnectorMouseUp={onConnectorMouseUp}
+                    onToggleDisabled={onToggleNodeDisabled}
+                    onDeleteNode={onDeleteNode}
+                    onMoreOptions={onMoreNodeOptions}
                   />
                 );
               }
@@ -421,17 +500,23 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
             })}
 
             {/* Render Connection Action Buttons */}
-            {connections.map((conn) => {
+            {Array.isArray(connections) && connections.map((conn) => {
               const fromNode = activeNodes.find(n => n.id === conn.fromNodeId);
               const toNode = activeNodes.find(n => n.id === conn.toNodeId);
               if (!fromNode || !toNode) return null;
+              if (fromNode.type === 'CONNECTED_CHAT_MODEL' || toNode.type === 'CONNECTED_CHAT_MODEL' ||
+                  fromNode.type === 'COINGECKO_TOOL_DISPLAY_NODE' || toNode.type === 'COINGECKO_TOOL_DISPLAY_NODE') {
+                return null;
+              }
+
+
               const startPos = getConnectorPosition(fromNode, conn.fromConnectorId);
               const endPos = getConnectorPosition(toNode, conn.toConnectorId);
               if (!startPos || !endPos) return null;
 
               const midX = (startPos.x + endPos.x) / 2;
               const midY = (startPos.y + endPos.y) / 2;
-              
+
               return (
                 <div
                   key={`actions-${conn.id}`}
@@ -440,7 +525,7 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
                     left: `${midX}px`,
                     top: `${midY}px`,
                     transform: 'translate(-50%, -50%)',
-                    zIndex: 10 
+                    zIndex: 10
                   }}
                 >
                   <TooltipProvider>
@@ -490,11 +575,11 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
       )}
         {/* AI Assistant Toggle Button - Statically positioned relative to this viewport */}
         {activeTab === 'editor' && (
-            <Button 
-                variant="outline" 
-                size="icon" 
-                className="absolute bottom-16 right-4 z-20 bg-card hover:bg-muted shadow-md h-9 w-9" 
-                onClick={onToggleAiAssistantPanel} 
+            <Button
+                variant="outline"
+                size="icon"
+                className="absolute bottom-16 right-4 z-20 bg-card hover:bg-muted shadow-md h-9 w-9"
+                onClick={onToggleAiAssistantPanel}
                 aria-label="Toggle AI Assistant"
             >
                 <Sparkles className="h-5 w-5" />
@@ -503,7 +588,7 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
       </div>
 
       {/* Bottom Toolbar */}
-      <div className="flex items-center justify-between p-1.5 border-t border-border bg-card">
+      <div className="flex items-center justify-between p-1.5 border-t border-border bg-card flex-shrink-0">
         <div className="flex items-center gap-0.5">
           <Button variant="ghost" size="icon" aria-label="Close Workflow Chat Panel" onClick={onToggleWorkflowChatPanel}><X className="h-5 w-5 text-muted-foreground" /></Button>
           <Button variant="ghost" size="icon" aria-label="Toggle Maximize Palette" onClick={onToggleMaximize}><Maximize2 className="h-5 w-5 text-muted-foreground" /></Button>
@@ -517,7 +602,7 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
             <FlaskConical className="mr-1.5 h-4 w-4" /> Test workflow
           </Button>
           <Button variant="outline" size="sm" onClick={onToggleWorkflowChatPanel}>
-            {isWorkflowChatPanelVisible ? <MessageSquareOff className="mr-1.5 h-4 w-4" /> : <MessageSquare className="mr-1.5 h-4 w-4" />}
+            {isWorkflowChatPanelVisible ? <MessageSquareOff className="mr-1.5 h-4 w-4" /> : <MessageSquare className="mr-1.5 h-4" />}
             {isWorkflowChatPanelVisible ? "Hide chat" : "Show chat"}
           </Button>
           <Button variant="destructive" size="icon" className="h-8 w-8" aria-label="Delete workflow">
@@ -528,10 +613,10 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
 
       {/* Workflow Chat Panel */}
       {isWorkflowChatPanelVisible && (
-        <div className="bg-card text-card-foreground border-t border-border p-4 flex flex-col" style={{ height: '250px' }}>
-          <div className="flex items-center justify-between mb-2">
+        <div className="bg-card text-card-foreground border-t border-border p-4 flex flex-col h-[250px] flex-shrink-0">
+          <div className="flex items-center justify-between mb-2 flex-shrink-0">
             <div className="flex items-center gap-2">
-              <span className="font-semibold">Workflow Chat</span>
+              <span className="font-semibold text-foreground">Workflow Chat</span>
               <span className="text-muted-foreground text-xs">Session {uuidv4().substring(0,8)}</span>
               <Button variant="ghost" size="icon" className="h-5 w-5 text-muted-foreground hover:text-foreground" aria-label="Refresh chat session">
                 <RefreshCw className="h-3 w-3" />
@@ -545,8 +630,8 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
           <ScrollArea className="flex-grow mb-2 bg-background rounded-md p-2" ref={workflowChatScrollAreaRef}>
             {workflowChatMessages.map(msg => (
               <div key={msg.id} className={`mb-2 p-2 rounded-md max-w-[80%] text-sm ${
-                msg.sender === 'user' ? 'bg-primary text-primary-foreground ml-auto' : 
-                msg.sender === 'ai' ? 'bg-secondary text-secondary-foreground mr-auto' : 
+                msg.sender === 'user' ? 'bg-primary text-primary-foreground ml-auto' :
+                msg.sender === 'ai' ? 'bg-secondary text-secondary-foreground mr-auto' :
                 'bg-muted text-muted-foreground text-center mx-auto w-full'
               }`}>
                 {msg.text}
@@ -562,7 +647,7 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
             )}
           </ScrollArea>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Input
               type="text"
               placeholder="Type a message for the workflow..."
@@ -586,3 +671,4 @@ CanvasArea.displayName = "CanvasArea";
 
 export default CanvasArea;
 
+    

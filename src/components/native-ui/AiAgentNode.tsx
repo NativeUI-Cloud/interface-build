@@ -2,9 +2,10 @@
 'use client';
 
 import type React from 'react'; // For MouseEvent type
-import { Bot, AlertTriangle, Plus, Settings2, SlidersHorizontal, Database } from 'lucide-react';
+import { Bot, AlertTriangle, Plus, Settings2, SlidersHorizontal, Database, Wrench, Power, Trash2, MoreHorizontal, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { NodeData } from '@/lib/types';
+import { cn } from '@/lib/utils';
 
 interface AiAgentNodeProps {
   id: string;
@@ -18,6 +19,9 @@ interface AiAgentNodeProps {
   onStartLineDraw?: (nodeId: string, connectorId: string, globalPosition: { x: number; y: number }, event: React.MouseEvent) => void;
   onConnectorMouseUp?: (nodeId: string, connectorId: string, connectorType: 'input' | 'output', globalPosition: { x: number; y: number }, event: React.MouseEvent) => void;
   isProcessing?: boolean;
+  onToggleDisabled: (nodeId: string) => void;
+  onDeleteNode: (nodeId: string) => void;
+  onMoreOptions: (nodeId: string) => void;
 }
 
 const DiamondIcon = ({isConnected}: {isConnected?: boolean}) => (
@@ -44,6 +48,9 @@ export default function AiAgentNode({
     onStartLineDraw,
     onConnectorMouseUp,
     isProcessing,
+    onToggleDisabled,
+    onDeleteNode,
+    onMoreOptions,
 }: AiAgentNodeProps) {
   const title = data?.title || name || 'AI Agent';
   const subTitle = data?.subTitle || 'Tools Agent';
@@ -51,6 +58,8 @@ export default function AiAgentNode({
   const isChatModelConfigValid = data?.selectedModelId && data.chatModelCredentialStatus === 'valid';
   const showWarning = !data?.selectedModelId || data?.chatModelCredentialStatus === 'invalid' || data?.chatModelCredentialStatus === 'unchecked';
   const isMemoryConfigured = !!data?.memoryType;
+  const areToolsConfigured = !!data?.tools && data.tools.length > 0;
+  const isDisabled = data?.isDisabled ?? false;
 
 
   const handleDoubleClick = () => {
@@ -93,18 +102,22 @@ export default function AiAgentNode({
 
   const borderClass = isProcessing
     ? 'border-yellow-400 animate-pulse'
-    : (showWarning ? 'border-red-500' : 'border-green-500');
+    : (isDisabled ? 'border-slate-500' : (showWarning ? 'border-red-500' : 'border-green-500'));
 
   return (
     <div
-      className={`relative bg-slate-700 text-white rounded-lg shadow-xl border-2 ${borderClass} w-64 min-h-[120px] p-3 flex flex-col select-none`}
+      className={cn(
+        "relative bg-slate-700 text-white rounded-lg shadow-xl border-2 w-64 min-h-[120px] p-3 flex flex-col select-none",
+        borderClass,
+        { 'opacity-60': isDisabled }
+      )}
       style={{
         position: 'absolute',
         left: `${position?.x || 0}px`,
         top: `${position?.y || 0}px`,
         cursor: isDragging ? 'grabbing' : (onNodeDoubleClick || onOpenConfiguration ? 'pointer' : 'grab'),
         userSelect: 'none',
-        zIndex: isDragging ? 1000 : (isProcessing ? 100 : 1), 
+        zIndex: isDragging ? 1000 : (isProcessing ? 100 : 1),
       }}
       onMouseDown={onMouseDown}
       onDoubleClick={handleDoubleClick}
@@ -144,18 +157,32 @@ export default function AiAgentNode({
         onMouseUp={(e) => handleConnectorMouseUpEvent('output-main', 'output', e)}
       />
 
-
-      {/* Header */}
+      {/* Header & Node Controls */}
       <div className="flex items-start justify-between mb-1">
-        <div className="flex items-center space-x-2">
-          <Bot className={`h-6 w-6 ${isProcessing ? 'text-yellow-300 animate-pulse' : (showWarning ? 'text-red-400' : 'text-green-400')}`} />
+        <div className="flex items-center space-x-2 flex-grow">
+          <Bot className={cn(`h-6 w-6`, isProcessing ? 'text-yellow-300 animate-pulse' : (showWarning ? 'text-red-400' : 'text-green-400'), {'text-slate-400': isDisabled})} />
           <div>
             <p className="font-semibold text-sm">{title}</p>
             <p className="text-xs text-slate-300">{subTitle}</p>
           </div>
         </div>
-        {showWarning && !isProcessing && <AlertTriangle className="h-5 w-5 text-red-500" />}
+        <div className="flex items-center space-x-0.5 flex-shrink-0 ml-1">
+           <Button variant="ghost" size="icon" className="h-6 w-6 p-0.5 text-slate-300 hover:text-white hover:bg-slate-600" onClick={(e) => { e.stopPropagation(); console.log('Play node ' + id); }} aria-label="Play Node" data-interactive="true">
+            <Play className="h-3 w-3" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6 p-0.5 text-slate-300 hover:text-white hover:bg-slate-600" onClick={(e) => { e.stopPropagation(); onToggleDisabled(id); }} aria-label={isDisabled ? "Activate Node" : "Deactivate Node"} data-interactive="true">
+            <Power className={cn("h-3 w-3", isDisabled ? "text-red-400" : "text-green-400")} />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6 p-0.5 text-slate-300 hover:text-destructive hover:bg-slate-600" onClick={(e) => { e.stopPropagation(); onDeleteNode(id); }} aria-label="Delete Node" data-interactive="true">
+            <Trash2 className="h-3 w-3" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-6 w-6 p-0.5 text-slate-300 hover:text-white hover:bg-slate-600" onClick={(e) => { e.stopPropagation(); onMoreOptions(id); }} aria-label="More Options" data-interactive="true">
+            <MoreHorizontal className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
+      {showWarning && !isProcessing && !isDisabled && <AlertTriangle className="absolute top-3 right-3 h-5 w-5 text-red-500" />}
+
 
       {/* Processing Text */}
       {isProcessing && (
@@ -171,7 +198,7 @@ export default function AiAgentNode({
         {[
           { label: 'Chat Model*', section: 'chatModel', isConnected: isChatModelConfigValid, Icon: isChatModelConfigValid ? SlidersHorizontal : Plus },
           { label: 'Memory', section: 'memory', isConnected: isMemoryConfigured, Icon: isMemoryConfigured ? Database : Plus },
-          { label: 'Tool', section: 'tools', isConnected: false /* Replace with actual logic */, Icon: Plus },
+          { label: 'Tool', section: 'tools', isConnected: areToolsConfigured, Icon: areToolsConfigured ? Wrench : Plus },
         ].map((item, index) => {
           const handleSpecialConnectorClick = (e: React.MouseEvent) => {
             e.stopPropagation();

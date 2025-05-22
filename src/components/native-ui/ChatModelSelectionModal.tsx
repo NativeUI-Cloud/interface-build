@@ -15,10 +15,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import ActionListItem from './ActionListItem';
-import { llmProviders, getAllChatModels } from '@/lib/llmProviders';
+import { llmProviders, getAllChatModels, getProviderById } from '@/lib/llmProviders';
 import type { LLMProvider, LLMModel, StoredCredential } from '@/lib/types';
 import { saveCredential, getCredentials, deleteCredential, updateCredential, validateApiKey, getCredentialById } from '@/lib/credentialsStore';
-import { ChevronLeft, Plus, Search, Trash2, Edit3, KeyRound, Globe, Server, CheckCircle2, AlertTriangle, XCircle, RefreshCw } from 'lucide-react';
+import { ChevronLeft, Plus, Search, Trash2, Edit3, KeyRound, Globe, Server, CheckCircle2, AlertTriangle, XCircle, RefreshCw, Info } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -32,8 +32,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 interface ChatModelSelectionModalProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  onCredentialSelected: (credentialId: string, modelId: string) => void;
-  currentConfiguredProviderId?: string;
+  onCredentialSelected: (credentialId: string, modelId: string) => void; // modelId is for chat models
+  currentConfiguredProviderId?: string; // Can be pre-selected provider for generic tools
   currentConfiguredModelId?: string;
   currentConfiguredCredentialId?: string; 
 }
@@ -61,6 +61,7 @@ export default function ChatModelSelectionModal({
   const [apiKey, setApiKey] = useState('');
   const [apiEndpoint, setApiEndpoint] = useState('');
   const [isVerifying, setIsVerifying] = useState<string | null>(null); 
+  const [selectedSubgraphKey, setSelectedSubgraphKey] = useState<string>(''); // For The Graph API
 
   const { toast } = useToast();
 
@@ -75,35 +76,53 @@ export default function ChatModelSelectionModal({
   useEffect(() => {
     if (isOpen) {
       refreshCredentials();
-      if (currentConfiguredCredentialId) {
-        const cred = getCredentialById(currentConfiguredCredentialId);
-        if (cred) {
-          const provider = llmProviders.find(p => p.id === cred.providerId);
-          const model = provider?.models.find(m => m.id === cred.modelId); // modelId on credential might be preferred if set
-          if (provider && model) {
-            setSelectedProvider(provider);
-            setSelectedModel(model);
-            setEditingCredential(cred); 
-            setCredentialName(cred.name);
-            setApiKey(''); 
-            setApiEndpoint(cred.endpoint || model.defaultEndpoint || '');
-            setStep('credential_form');
-            return; 
+      const providerToSelect = currentConfiguredProviderId ? getProviderById(currentConfiguredProviderId) : null;
+      
+      if (providerToSelect) {
+        setSelectedProvider(providerToSelect);
+        const modelToSelect = currentConfiguredModelId ? providerToSelect.models.find(m => m.id === currentConfiguredModelId) : null;
+        if (modelToSelect) {
+          setSelectedModel(modelToSelect);
+          setApiEndpoint(modelToSelect.defaultEndpoint || '');
+          setStep('credential_management'); // Go to credential list for this model/provider
+          if (currentConfiguredCredentialId) {
+            const cred = getCredentialById(currentConfiguredCredentialId);
+            if (cred) {
+              setEditingCredential(cred);
+              setCredentialName(cred.name);
+              setApiKey(''); 
+              setApiEndpoint(cred.endpoint || modelToSelect.defaultEndpoint || '');
+              if (providerToSelect.id === 'the_graph_api') {
+                setSelectedSubgraphKey(cred.endpoint || providerToSelect.predefinedSubgraphs?.[0]?.value || 'custom');
+              }
+              setStep('credential_form'); // If credential also known, go to form
+            }
           }
-        }
-      } else if (currentConfiguredProviderId && currentConfiguredModelId) {
-        const provider = llmProviders.find(p => p.id === currentConfiguredProviderId);
-        const model = provider?.models.find(m => m.id === currentConfiguredModelId);
-        if (provider && model) {
-          setSelectedProvider(provider);
-          setSelectedModel(model);
+        } else if (providerToSelect.models.length === 0 || providerToSelect.models.every(m => !m.isChatModel)) {
+          // If provider has no chat models (e.g., it's a generic tool provider), go to its credential management
+          setSelectedModel(null); // No specific model
+          const defaultEndpoint = providerToSelect.properties?.find(p=>p.name === 'endpoint')?.default || providerToSelect.properties?.find(p=>p.name === 'server')?.default || '';
+          setApiEndpoint(defaultEndpoint);
+          if (providerToSelect.id === 'the_graph_api') {
+            setSelectedSubgraphKey(defaultEndpoint || providerToSelect.predefinedSubgraphs?.[0]?.value || 'custom');
+          }
           setStep('credential_management');
-          return; 
+          if (currentConfiguredCredentialId) {
+            const cred = getCredentialById(currentConfiguredCredentialId);
+             if (cred && cred.providerId === providerToSelect.id) {
+                handleEditCredential(cred); // Pre-fill form if editing existing tool credential
+             }
+          }
+        } else {
+          // Provider has models, but none specifically selected yet
+          setStep('model_list');
         }
+      } else {
+        // No provider pre-selected, start from provider list
+        setStep('provider_list');
       }
-      setStep('provider_list');
-
     } else { 
+      // Reset on close
       setStep('provider_list');
       setSearchTerm('');
       setSelectedProvider(null);
@@ -112,6 +131,7 @@ export default function ChatModelSelectionModal({
       setCredentialName('');
       setApiKey('');
       setApiEndpoint('');
+      setSelectedSubgraphKey('');
       setIsVerifying(null);
     }
   }, [isOpen, currentConfiguredProviderId, currentConfiguredModelId, currentConfiguredCredentialId]);
@@ -120,8 +140,16 @@ export default function ChatModelSelectionModal({
   useEffect(() => {
     if (selectedProvider) {
        setCredentialsForSelectedProvider(allStoredCredentials.filter(c => c.providerId === selectedProvider.id));
+       if (selectedProvider.id === 'the_graph_api') {
+        // Initialize selectedSubgraphKey and apiEndpoint for The Graph
+        const defaultGraphEndpoint = selectedProvider.predefinedSubgraphs?.[0]?.value || '';
+        setSelectedSubgraphKey(apiEndpoint || defaultGraphEndpoint || 'custom');
+        if (!apiEndpoint && defaultGraphEndpoint) {
+            setApiEndpoint(defaultGraphEndpoint);
+        }
+       }
     }
-  }, [selectedProvider, allStoredCredentials]);
+  }, [selectedProvider, allStoredCredentials, apiEndpoint]);
 
 
   const filteredProviders = useMemo(() => {
@@ -135,39 +163,74 @@ export default function ChatModelSelectionModal({
 
   const modelsForSelectedProvider = useMemo(() => {
     if (!selectedProvider) return [];
-    const models = selectedProvider.models.filter(m => m.isChatModel);
-    if (!searchTerm && step === 'model_list') return models;
-    if (step === 'model_list') {
-      return models.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    // Filter for actual chat models if the provider has them
+    const chatModels = selectedProvider.models.filter(m => m.isChatModel);
+    if (chatModels.length === 0 && selectedProvider.properties) {
+        // This indicates it's a generic tool provider, no models to list here
+        return []; 
     }
-    return models;
+    if (!searchTerm && step === 'model_list') return chatModels;
+    if (step === 'model_list') {
+      return chatModels.filter(m => m.name.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
+    return chatModels;
   }, [selectedProvider, searchTerm, step]);
 
 
   const handleProviderSelect = (provider: LLMProvider) => {
     setSelectedProvider(provider);
     setSearchTerm(''); 
-    setStep('model_list');
+    const chatModels = provider.models.filter(m => m.isChatModel);
+    if (chatModels.length === 0) {
+      setSelectedModel(null); 
+      const defaultEp = provider.properties?.find(p=>p.name === 'endpoint')?.default || provider.properties?.find(p=>p.name === 'server')?.default || '';
+      setApiEndpoint(defaultEp);
+       if (provider.id === 'the_graph_api') {
+        const graphDefault = provider.predefinedSubgraphs?.[0]?.value || 'custom';
+        setSelectedSubgraphKey(graphDefault);
+        setApiEndpoint(graphDefault === 'custom' ? '' : graphDefault);
+      }
+      setStep('credential_management');
+    } else {
+      setStep('model_list');
+    }
   };
   
   const handleModelSelect = (model: LLMModel) => {
     setSelectedModel(model);
     setApiEndpoint(model.defaultEndpoint || '');
-    setCredentialsForSelectedProvider(allStoredCredentials.filter(c => c.providerId === selectedProvider?.id && (c.modelId === model.id || !c.modelId)));
+    setCredentialsForSelectedProvider(
+      allStoredCredentials.filter(c => c.providerId === selectedProvider?.id && (c.modelId === model.id || !c.modelId))
+    );
     setStep('credential_management');
   };
 
   const handleEditCredential = (credential: StoredCredential) => {
     setEditingCredential(credential);
     setCredentialName(credential.name);
-    setApiKey(''); 
-    setApiEndpoint(credential.endpoint || selectedModel?.defaultEndpoint || '');
+    setApiKey(''); // Don't prefill API key for editing
+    const currentProvider = getProviderById(credential.providerId);
+    const currentModel = currentProvider?.models.find(m => m.id === credential.modelId);
+    
+    let endpointToSet = credential.endpoint || currentModel?.defaultEndpoint || currentProvider?.properties?.find(p=>p.name === 'endpoint' || p.name === 'server')?.default || '';
+    setApiEndpoint(endpointToSet);
+
+    if (credential.providerId === 'the_graph_api' && currentProvider?.predefinedSubgraphs) {
+      const isPredefined = currentProvider.predefinedSubgraphs.some(sg => sg.value === credential.endpoint);
+      setSelectedSubgraphKey(isPredefined ? credential.endpoint! : 'custom');
+      if (!isPredefined) {
+        // If it's custom, apiEndpoint is already set to credential.endpoint.
+        // If credential.endpoint was empty, it might fall back to default, which is fine.
+      }
+    } else {
+      setSelectedSubgraphKey(''); // Reset for non-Graph API providers
+    }
     setStep('credential_form');
   };
   
   const handleUseCredential = (credentialId: string) => {
-    if (!selectedModel) return; 
-    onCredentialSelected(credentialId, selectedModel.id);
+    const effectiveModelId = selectedModel?.id || 'provider-default'; 
+    onCredentialSelected(credentialId, effectiveModelId);
     onOpenChange(false); 
   };
 
@@ -180,62 +243,72 @@ export default function ChatModelSelectionModal({
     }
   };
 
-  const handleVerifyCredential = async (credential: StoredCredential, isVerifyingAfterSave: boolean = false) => {
-    setIsVerifying(credential.id);
-    toast({ title: "Verifying...", description: `Checking connection for ${credential.name}.`});
+  const handleVerifyCredential = async (credentialToVerify: StoredCredential, isVerifyingAfterSave: boolean = false) => {
+    setIsVerifying(credentialToVerify.id);
+    toast({ title: "Verifying...", description: `Checking connection for ${credentialToVerify.name}.`});
     try {
-      const validatedCred = await validateApiKey(credential); 
-      refreshCredentials(); // Refresh local list with new status from store
+      const validationInput = {
+        ...credentialToVerify, 
+        modelId: credentialToVerify.modelId || selectedModel?.id 
+      };
+      const validatedCredResult = await validateApiKey(validationInput); 
+      refreshCredentials(); 
       
-      if (validatedCred.status === 'valid') {
-        toast({ title: "Success", description: `${credential.name} connected successfully.` });
+      if (validatedCredResult.status === 'valid') {
+        toast({ title: "Success", description: `${credentialToVerify.name} connected successfully.` });
         if (isVerifyingAfterSave) { 
-            handleUseCredential(validatedCred.id); // This will close modal and select
+            handleUseCredential(validatedCredResult.id);
         }
-        return true; // Indicate success
+        return true;
       } else {
-        toast({ title: "Verification Failed", description: validatedCred.validationError || "Could not connect.", variant: "destructive" });
+        toast({ title: "Verification Failed", description: validatedCredResult.validationError || "Could not connect.", variant: "destructive" });
         if (isVerifyingAfterSave) {
-            // Stay on form if validation fails after save
-            if (!editingCredential && validatedCred) { 
-                setEditingCredential(validatedCred); // Keep form populated, now with an ID if it was new
+            if (!editingCredential && validatedCredResult) { 
+                setEditingCredential(validatedCredResult); 
             }
         }
-        return false; // Indicate failure
+        return false;
       }
     } catch (error: any) {
       toast({ title: "Error Verifying", description: error.message || "Verification process failed.", variant: "destructive" });
       refreshCredentials(); 
       if (isVerifyingAfterSave) {
-        const currentCredInStore = getCredentialById(credential.id);
+        const currentCredInStore = getCredentialById(credentialToVerify.id);
         if (!editingCredential && currentCredInStore) {
             setEditingCredential(currentCredInStore);
         }
       }
-      return false; // Indicate failure
+      return false;
     } finally {
       setIsVerifying(null);
     }
   };
 
   const handleSaveOrUpdateCredential = async () => {
-    if (!selectedProvider || !selectedModel || !credentialName.trim()) {
-      toast({ title: "Error", description: "Provider, Model, and Credential Name are required.", variant: "destructive" });
-      return;
-    }
-    // For new credentials, API key is required. For updates, it's optional (blank means keep existing).
-    if (!editingCredential && !apiKey.trim()) {
-      toast({ title: "Error", description: "API Key is required for new credentials.", variant: "destructive" });
+    if (!selectedProvider || !credentialName.trim()) { 
+      toast({ title: "Error", description: "Provider and Credential Name are required.", variant: "destructive" });
       return;
     }
 
+    if (!editingCredential && !apiKey.trim()) {
+      const apiKeyProp = selectedProvider.properties?.find(p => p.name === 'apiKey' || p.name === 'accessToken' || p.name === 'apiKeyAndToken' || p.name === 'serviceAccount');
+      const apiKeyRequired = apiKeyProp?.type !== 'string' || !apiKeyProp.typeOptions?.optional; // Basic check, refine if needed
+      if (apiKeyRequired) {
+         toast({ title: "Error", description: "API Key/Token is required for new credentials.", variant: "destructive" });
+         return;
+      }
+    }
+
     let savedOrUpdatedCredential: StoredCredential | null = null;
+    const providerRequiresEndpoint = selectedProvider.models.find(m => m.id === selectedModel?.id)?.requiresEndpoint !== false || 
+                                   selectedProvider.properties?.some(p => p.name === 'endpoint' || p.name === 'server');
+
     const credentialPayload = {
         providerId: selectedProvider.id,
-        modelId: selectedModel.id,
+        modelId: selectedModel?.id, 
         name: credentialName.trim(),
-        apiKey: apiKey, // Pass empty string if user wants to clear/rely on existing for update
-        endpoint: selectedModel.requiresEndpoint !== false ? apiEndpoint : undefined,
+        apiKey: apiKey, 
+        endpoint: providerRequiresEndpoint ? apiEndpoint : undefined,
     };
 
     if (editingCredential) {
@@ -245,8 +318,6 @@ export default function ChatModelSelectionModal({
     }
 
     if (savedOrUpdatedCredential) {
-      // Now verify the just saved/updated credential.
-      // handleVerifyCredential will show toasts and decide if to call handleUseCredential.
       await handleVerifyCredential(savedOrUpdatedCredential, true);
     } else {
       toast({ title: "Error", description: `Failed to ${editingCredential ? 'update' : 'save'} credential.`, variant: "destructive" });
@@ -259,24 +330,26 @@ export default function ChatModelSelectionModal({
       case 'valid': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
       case 'invalid': return <XCircle className="h-4 w-4 text-red-500" />;
       case 'unchecked': return <AlertTriangle className="h-4 w-4 text-yellow-500" />;
-      default: return <AlertTriangle className="h-4 w-4 text-muted-foreground" />;
+      default: return <Info className="h-4 w-4 text-muted-foreground" />;
     }
   };
 
-  const relevantCredentialsForModel = useMemo(() => {
-    if (!selectedModel || !selectedProvider) return [];
-    return credentialsForSelectedProvider.filter(
-        c => c.modelId === selectedModel.id || 
-             (!c.modelId && c.providerId === selectedProvider.id) 
-    );
+  const relevantCredentialsForContext = useMemo(() => {
+    if (!selectedProvider) return [];
+    if (selectedModel) { 
+      return credentialsForSelectedProvider.filter(
+          c => c.providerId === selectedProvider.id && (c.modelId === selectedModel.id || !c.modelId) 
+      );
+    }
+    return credentialsForSelectedProvider.filter(c => c.providerId === selectedProvider.id);
   }, [credentialsForSelectedProvider, selectedModel, selectedProvider]);
 
 
   const renderProviderList = () => (
     <>
       <DialogHeader className="px-6 pt-6 pb-4 border-b">
-        <DialogTitle className="text-xl">Select Chat Model Provider</DialogTitle>
-        <DialogDescription>Choose an LLM provider to connect to.</DialogDescription>
+        <DialogTitle className="text-xl">Select Provider</DialogTitle>
+        <DialogDescription>Choose a service provider to connect to.</DialogDescription>
       </DialogHeader>
       <div className="p-0">
         <div className="p-4 border-b">
@@ -297,7 +370,7 @@ export default function ChatModelSelectionModal({
                 key={provider.id}
                 icon={provider.icon}
                 title={provider.name}
-                description={provider.description || `${provider.models.length} model(s) available`}
+                description={provider.description || `${provider.models.filter(m => m.isChatModel).length} chat model(s) available`}
                 onClick={() => handleProviderSelect(provider)}
               />
             ))}
@@ -307,14 +380,14 @@ export default function ChatModelSelectionModal({
     </>
   );
   
-  const renderModelList = () => (
+  const renderModelList = () => ( 
     <>
       <DialogHeader className="px-6 pt-6 pb-4 border-b">
         <Button variant="ghost" size="sm" onClick={() => { setStep('provider_list'); setSearchTerm(''); setSelectedProvider(null);}} className="absolute left-6 top-7 text-sm">
           <ChevronLeft className="mr-1 h-4 w-4" /> Back
         </Button>
         <DialogTitle className="text-xl text-center">{selectedProvider?.name} Models</DialogTitle>
-        <DialogDescription className="text-center">Select a specific model.</DialogDescription>
+        <DialogDescription className="text-center">Select a specific chat model.</DialogDescription>
       </DialogHeader>
        <div className="p-0">
         <div className="p-4 border-b">
@@ -330,7 +403,7 @@ export default function ChatModelSelectionModal({
         </div>
         <ScrollArea className="h-[50vh] p-2">
           <div className="space-y-1 p-2">
-            {modelsForSelectedProvider.map((model) => (
+            {modelsForSelectedProvider.map((model) => ( 
               <ActionListItem
                 key={model.id}
                 icon={model.icon || selectedProvider?.icon || Server}
@@ -339,7 +412,7 @@ export default function ChatModelSelectionModal({
                 onClick={() => handleModelSelect(model)}
               />
             ))}
-             {modelsForSelectedProvider.length === 0 && <p className="text-center text-muted-foreground p-4">No models found for "{searchTerm}".</p>}
+             {modelsForSelectedProvider.length === 0 && <p className="text-center text-muted-foreground p-4">No chat models found for "{searchTerm}".</p>}
           </div>
         </ScrollArea>
       </div>
@@ -349,18 +422,27 @@ export default function ChatModelSelectionModal({
   const renderCredentialManagement = () => (
     <>
       <DialogHeader className="px-6 pt-6 pb-4 border-b">
-         <Button variant="ghost" size="sm" onClick={() => { setStep('model_list'); setSearchTerm(''); setSelectedModel(null); }} className="absolute left-6 top-7 text-sm">
-          <ChevronLeft className="mr-1 h-4 w-4" /> Back to Models
+         <Button variant="ghost" size="sm" 
+            onClick={() => { 
+                const providerHasChatModels = selectedProvider?.models.some(m => m.isChatModel);
+                setStep(providerHasChatModels ? 'model_list' : 'provider_list'); 
+                setSearchTerm(''); 
+                setSelectedModel(null); 
+                if (!providerHasChatModels) setSelectedProvider(null); 
+            }} 
+            className="absolute left-6 top-7 text-sm"
+        >
+          <ChevronLeft className="mr-1 h-4 w-4" /> Back
         </Button>
-        <DialogTitle className="text-xl text-center">{selectedModel?.name} Credentials</DialogTitle>
-        <DialogDescription className="text-center">Manage or add credentials for {selectedProvider?.name}.</DialogDescription>
+        <DialogTitle className="text-xl text-center">{selectedModel?.name || selectedProvider?.name} Credentials</DialogTitle>
+        <DialogDescription className="text-center">Manage or add credentials for {selectedProvider?.name}{selectedModel ? ` - ${selectedModel.name}` : ''}.</DialogDescription>
       </DialogHeader>
       <div className="p-6 space-y-4">
-        {relevantCredentialsForModel.length > 0 && (
+        {relevantCredentialsForContext.length > 0 && (
           <div className="space-y-2">
-            <Label className="font-semibold">Existing Credentials for {selectedModel?.name}</Label>
+            <Label className="font-semibold">Existing Credentials for {selectedModel?.name || selectedProvider?.name}</Label>
             <ScrollArea className="h-[max(20vh,150px)] border rounded-md p-2 bg-background">
-              {relevantCredentialsForModel.map(cred => ( 
+              {relevantCredentialsForContext.map(cred => ( 
                 <div key={cred.id} className="flex items-center justify-between p-2 hover:bg-muted/50 rounded-md">
                   <div className="flex items-center gap-2">
                     <TooltipProvider>
@@ -370,7 +452,7 @@ export default function ChatModelSelectionModal({
                         </TooltipTrigger>
                         <TooltipContent>
                           <p>Status: {cred.status}</p>
-                          {cred.validationError && <p className="max-w-xs">Error: {cred.validationError}</p>}
+                          {cred.validationError && <p className="max-w-xs text-destructive">{cred.validationError}</p>}
                           {cred.lastValidated && <p>Last checked: {new Date(cred.lastValidated).toLocaleString()}</p>}
                         </TooltipContent>
                       </Tooltip>
@@ -378,7 +460,8 @@ export default function ChatModelSelectionModal({
                     <div>
                       <p className="font-medium">{cred.name}</p>
                       <p className="text-xs text-muted-foreground">
-                        {cred.endpoint ? `Endpoint: ${cred.endpoint}` : 'Default Endpoint'}
+                        {cred.providerId}{cred.modelId ? ` / ${cred.modelId.substring(0,15)}...` : ''}
+                        {cred.endpoint ? ` @ ${cred.endpoint.substring(0,30)}...` : (selectedProvider?.models.find(m => m.id === cred.modelId)?.defaultEndpoint ? ' @ Default' : '')}
                       </p>
                        {cred.status === 'invalid' && cred.validationError && (
                         <p className="text-xs text-destructive max-w-xs truncate" title={cred.validationError}>{cred.validationError}</p>
@@ -425,14 +508,34 @@ export default function ChatModelSelectionModal({
             </ScrollArea>
           </div>
         )}
-        <Button className="w-full" onClick={() => { setEditingCredential(null); setCredentialName(''); setApiKey(''); setApiEndpoint(selectedModel?.defaultEndpoint || ''); setStep('credential_form');}}>
+        <Button className="w-full" onClick={() => { 
+            setEditingCredential(null); 
+            setCredentialName(''); 
+            setApiKey(''); 
+            const defaultEp = selectedModel?.defaultEndpoint || selectedProvider?.properties?.find(p=>p.name === 'endpoint' || p.name === 'server')?.default || '';
+            setApiEndpoint(defaultEp); 
+            if (selectedProvider?.id === 'the_graph_api') {
+                const graphDefault = selectedProvider.predefinedSubgraphs?.[0]?.value || 'custom';
+                setSelectedSubgraphKey(graphDefault);
+                setApiEndpoint(graphDefault === 'custom' ? '' : graphDefault);
+            } else {
+                setSelectedSubgraphKey('');
+            }
+            setStep('credential_form');
+        }}>
           <Plus className="mr-2 h-4 w-4" /> Add New Credential
         </Button>
       </div>
     </>
   );
 
-  const renderCredentialForm = () => (
+  const renderCredentialForm = () => {
+    const endpointProperty = selectedProvider?.properties?.find(p => p.name === 'endpoint' || p.name === 'server');
+    const apiKeyProperty = selectedProvider?.properties?.find(p => p.name === 'apiKey' || p.name === 'accessToken' || p.name === 'apiKeyAndToken' || p.name === 'serviceAccount');
+    const providerRequiresEndpoint = selectedModel?.requiresEndpoint !== false || !!endpointProperty;
+    const isGraphApi = selectedProvider?.id === 'the_graph_api';
+
+    return (
     <>
       <DialogHeader className="px-6 pt-6 pb-4 border-b">
         <Button variant="ghost" size="sm" onClick={() => setStep('credential_management')} className="absolute left-6 top-7 text-sm">
@@ -441,7 +544,10 @@ export default function ChatModelSelectionModal({
         <DialogTitle className="text-xl text-center">
           {editingCredential ? 'Edit' : 'New'} {selectedProvider?.name} Credential
         </DialogTitle>
-         <DialogDescription className="text-center">For model: {selectedModel?.name}</DialogDescription>
+         <DialogDescription className="text-center">
+            For: {selectedModel?.name || selectedProvider?.name}
+            {editingCredential && <span className="block text-xs">ID: {editingCredential.id.substring(0,8)}... Status: {editingCredential.status}</span>}
+         </DialogDescription>
       </DialogHeader>
       <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
         <div className="space-y-1">
@@ -449,40 +555,96 @@ export default function ChatModelSelectionModal({
           <Input id="credName" placeholder="e.g., My Personal Key" value={credentialName} onChange={e => setCredentialName(e.target.value)} className="bg-background"/>
         </div>
         <div className="space-y-1">
-          <Label htmlFor="apiKey">{selectedModel?.apiKeyName || selectedProvider?.name + ' API Key' || 'API Key'} {!editingCredential && <span className="text-destructive">*</span>}</Label>
+          <Label htmlFor="apiKey">
+            {apiKeyProperty?.displayName || selectedModel?.apiKeyName || selectedProvider?.name + ' API Key/Token' || 'API Key/Token'}
+            {!editingCredential && <span className="text-destructive">*</span>}
+          </Label>
           <Input 
             id="apiKey" 
             type="password" 
-            placeholder={editingCredential ? "Enter new API key to change" : "Enter your API key"} 
+            placeholder={editingCredential ? "Enter new key/token to change" : "Enter your API key/token"} 
             value={apiKey} 
             onChange={e => setApiKey(e.target.value)} 
             className="bg-background"
           />
-          {editingCredential && <p className="text-xs text-muted-foreground">Leave blank to keep existing API key.</p>}
+          {editingCredential && <p className="text-xs text-muted-foreground">Leave blank to keep existing API key/token.</p>}
+          {apiKeyProperty?.description && <p className="text-xs text-muted-foreground mt-1">{apiKeyProperty.description}</p>}
         </div>
-        {(selectedModel?.requiresEndpoint !== false) && (
+
+        {isGraphApi && selectedProvider?.predefinedSubgraphs && (
           <div className="space-y-1">
-            <Label htmlFor="apiEndpoint">{selectedModel?.endpointLabel || 'API Endpoint'}</Label>
+            <Label htmlFor="subgraphSelect">{endpointProperty?.displayName || 'Subgraph Query URL'}</Label>
+            <Select
+              value={selectedSubgraphKey}
+              onValueChange={(value) => {
+                setSelectedSubgraphKey(value);
+                if (value === 'custom') {
+                  setApiEndpoint(''); // Clear endpoint for custom input
+                } else {
+                  setApiEndpoint(value);
+                }
+              }}
+            >
+              <SelectTrigger id="subgraphSelect" className="bg-background">
+                <SelectValue placeholder="Select a subgraph or choose custom" />
+              </SelectTrigger>
+              <SelectContent>
+                {selectedProvider.predefinedSubgraphs.map(sg => (
+                  <SelectItem key={sg.value} value={sg.value}>{sg.label}</SelectItem>
+                ))}
+                <SelectItem value="custom">Custom URL...</SelectItem>
+              </SelectContent>
+            </Select>
+            {selectedSubgraphKey === 'custom' && (
+              <Input
+                id="customApiEndpoint"
+                placeholder="Enter custom Subgraph Query URL (e.g., https://api.thegraph.com/...)"
+                value={apiEndpoint}
+                onChange={(e) => setApiEndpoint(e.target.value)}
+                className="bg-background mt-2"
+              />
+            )}
+            {endpointProperty?.description && selectedSubgraphKey !== 'custom' && (
+                 <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">
+                    {endpointProperty.description}
+                 </p>
+             )}
+          </div>
+        )}
+
+        {providerRequiresEndpoint && !isGraphApi && (
+          <div className="space-y-1">
+            <Label htmlFor="apiEndpoint">{endpointProperty?.displayName || selectedModel?.endpointLabel || 'API Endpoint'}</Label>
             <Input 
               id="apiEndpoint" 
-              placeholder={selectedModel?.defaultEndpoint || "Enter API endpoint"} 
+              placeholder={selectedModel?.defaultEndpoint || endpointProperty?.default || "Enter API endpoint/server URL"} 
               value={apiEndpoint} 
               onChange={e => setApiEndpoint(e.target.value)} 
               className="bg-background"
             />
-             {selectedModel?.defaultEndpoint && <p className="text-xs text-muted-foreground mt-1">Default: {selectedModel.defaultEndpoint}</p>}
+             {(selectedModel?.defaultEndpoint || endpointProperty?.default) && 
+                <p className="text-xs text-muted-foreground mt-1">
+                    Default: {selectedModel?.defaultEndpoint || endpointProperty?.default}
+                </p>
+             }
+             {endpointProperty?.description && 
+                <p className="text-xs text-muted-foreground mt-1 whitespace-pre-line">
+                    {endpointProperty.description}
+                </p>
+             }
           </div>
         )}
       </div>
       <DialogFooter className="p-6 border-t">
         <Button variant="outline" onClick={() => { setEditingCredential(null); setStep('credential_management'); }}>Cancel</Button>
-        <Button onClick={handleSaveOrUpdateCredential} disabled={isVerifying !== null}>
+        <Button onClick={handleSaveOrUpdateCredential} disabled={isVerifying !== null || !credentialName.trim() || (!editingCredential && !apiKey.trim() && !selectedProvider?.properties?.find(p=>p.name ==='apiKey')?.typeOptions?.optional) }>
             {isVerifying ? <RefreshCw className="mr-2 h-4 w-4 animate-spin" /> : (editingCredential ? <Edit3 className="mr-2 h-4 w-4" /> : <Plus className="mr-2 h-4 w-4" />) }
             {editingCredential ? 'Update & Verify' : 'Save & Verify'}
         </Button>
       </DialogFooter>
     </>
-  );
+    );
+  };
 
 
   return (
@@ -490,8 +652,8 @@ export default function ChatModelSelectionModal({
       <DialogContent className="sm:max-w-lg p-0">
         {step === 'provider_list' && renderProviderList()}
         {step === 'model_list' && selectedProvider && renderModelList()}
-        {step === 'credential_management' && selectedProvider && selectedModel && renderCredentialManagement()}
-        {step === 'credential_form' && selectedProvider && selectedModel && renderCredentialForm()}
+        {step === 'credential_management' && selectedProvider && renderCredentialManagement()}
+        {step === 'credential_form' && selectedProvider && renderCredentialForm()}
       </DialogContent>
     </Dialog>
   );

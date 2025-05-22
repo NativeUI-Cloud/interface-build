@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { v4 as uuidv4 } from 'uuid';
 
 interface AiAssistantPanelProps {
-  isOpen: boolean;
+  // isOpen prop removed as parent now controls rendering
   onClose: () => void;
   messages: { id: string; text: string; sender: 'user' | 'ai' | 'system' }[];
   onSendMessage: (message: string) => void;
@@ -20,7 +20,6 @@ interface AiAssistantPanelProps {
 }
 
 export default function AiAssistantPanel({
-  isOpen,
   onClose,
   messages,
   onSendMessage,
@@ -100,7 +99,7 @@ export default function AiAssistantPanel({
               )}
               <div
                 className={cn(
-                  'max-w-[80%] rounded-lg px-3 py-2 whitespace-pre-wrap',
+                  'max-w-[80%] rounded-lg px-3 py-2 whitespace-pre-wrap shadow-sm',
                   msg.sender === 'user'
                     ? 'bg-primary text-primary-foreground rounded-br-none'
                     : 'bg-muted text-muted-foreground rounded-bl-none'
@@ -109,8 +108,8 @@ export default function AiAssistantPanel({
                 {msg.text}
               </div>
                {msg.sender === 'user' && (
-                <div className="flex-shrink-0 p-1.5 bg-primary rounded-full">
-                  <User className="h-4 w-4 text-primary-foreground" />
+                <div className="flex-shrink-0 p-1.5 bg-accent text-accent-foreground rounded-full">
+                  <User className="h-4 w-4" />
                 </div>
               )}
             </div>
@@ -120,7 +119,7 @@ export default function AiAssistantPanel({
               <div className="flex-shrink-0 p-1.5 bg-primary rounded-full">
                   <BotIcon className="h-4 w-4 text-primary-foreground animate-pulse" />
               </div>
-              <div className="max-w-[80%] rounded-lg px-3 py-2 bg-muted text-muted-foreground rounded-bl-none animate-pulse">
+              <div className="max-w-[80%] rounded-lg px-3 py-2 bg-muted text-muted-foreground rounded-bl-none animate-pulse shadow-sm">
                 Thinking...
               </div>
             </div>
@@ -128,11 +127,11 @@ export default function AiAssistantPanel({
         </div>
       </ScrollArea>
 
-      <footer className="p-3 border-t border-border flex-shrink-0">
+      <footer className="p-3 border-t border-border flex-shrink-0 bg-card">
         <div className="flex items-center gap-2">
           <Input
             type="text"
-            placeholder="Enter your response..."
+            placeholder="Ask the assistant..."
             className="flex-grow bg-background border-input placeholder-muted-foreground focus:ring-primary focus:border-primary"
             value={input}
             onChange={(e) => setInput(e.target.value)}
