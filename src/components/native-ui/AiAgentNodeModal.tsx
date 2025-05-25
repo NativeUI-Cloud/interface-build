@@ -22,14 +22,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Bot, FlaskConical, ExternalLink, Info, SquareSlash, ChevronDown, Plus, Settings2, ScrollText, Database, KeyRound, CheckCircle2, AlertTriangle, XCircle, Brain, Cpu, Container, Leaf, ToyBrick, Feather, Wrench, DollarSign, Github, FolderKanban, Package, Gitlab, KanbanSquare, DatabaseZap, Flame, NotebookText, Network, SearchCode, GitFork, ShoppingCart, Stethoscope, BookOpenCheck } from 'lucide-react';
+import { Bot, FlaskConical, ExternalLink, Info, SquareSlash, ChevronDown, Plus, Settings2, ScrollText, Database, KeyRound, CheckCircle2, AlertTriangle, XCircle, Brain, Cpu, Container, Leaf, ToyBrick, Feather, Wrench, DollarSign, Github, FolderKanban, Package, Gitlab, KanbanSquare, DatabaseZap, Flame, NotebookText, Network, SearchCode, GitFork, ShoppingCart, Stethoscope, BookOpenCheck, GraduationCap } from 'lucide-react';
 import type { Node, StoredCredential, AnyToolConfig, AgentTemplate } from '@/lib/types';
 import ChatModelSelectionModal from './ChatModelSelectionModal';
 import { getCredentialById } from '@/lib/credentialsStore';
 import { getAllChatModels } from '@/lib/llmProviders';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import ActionListItem from './ActionListItem';
-import { agentTemplates } from '@/lib/agentTemplates'; // Import templates
+import { agentTemplates } from '@/lib/agentTemplates'; 
 
 
 interface AiAgentNodeModalProps {
@@ -62,7 +62,7 @@ export default function AiAgentNodeModal({
 
 
   const [promptSource, setPromptSource] = useState<PromptSource>('chat-trigger');
-  const [systemPrompt, setSystemPrompt] = useState<string>(''); // Renamed from customPrompt
+  const [systemPrompt, setSystemPrompt] = useState<string>(''); 
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | undefined>(node?.data?.templateId);
   const [loadedTemplateDescription, setLoadedTemplateDescription] = useState<string | undefined>(undefined);
   const [loadedTemplateSuggestedTools, setLoadedTemplateSuggestedTools] = useState<string[] | undefined>(undefined);
@@ -82,7 +82,7 @@ export default function AiAgentNodeModal({
   useEffect(() => {
     if (isOpen && node?.data) {
       setPromptSource(node.data.promptSource || 'chat-trigger');
-      setSystemPrompt(node.data.systemPrompt || ''); // Use systemPrompt
+      setSystemPrompt(node.data.systemPrompt || ''); 
       setSelectedMemory(node.data.memoryType || null);
       setSelectedTemplateId(node.data.templateId);
 
@@ -150,7 +150,7 @@ export default function AiAgentNodeModal({
     const newPrompt = event.target.value;
     setSystemPrompt(newPrompt);
     if (node) {
-      onNodeConfigChange(node.id, { ...node.data, systemPrompt: newPrompt, templateId: undefined }); // Clear templateId if prompt is manually edited
+      onNodeConfigChange(node.id, { ...node.data, systemPrompt: newPrompt, templateId: undefined }); 
       setSelectedTemplateId(undefined);
       setLoadedTemplateDescription(undefined);
       setLoadedTemplateSuggestedTools(undefined);
@@ -160,22 +160,31 @@ export default function AiAgentNodeModal({
   const handleTemplateSelect = (templateId: string) => {
     const selectedTemplate = agentTemplates.find(t => t.id === templateId);
     if (selectedTemplate && node) {
+      let newConfigData: Partial<Node['data']> = {
+        systemPrompt: selectedTemplate.systemPrompt,
+        promptSource: 'system-prompt',
+        templateId: selectedTemplate.id,
+      };
+      if (selectedTemplate.defaultModelId) newConfigData.selectedModelId = selectedTemplate.defaultModelId;
+      if (selectedTemplate.defaultProviderId) newConfigData.selectedProviderId = selectedTemplate.defaultProviderId;
+      if (selectedTemplate.defaultMemoryType) newConfigData.memoryType = selectedTemplate.defaultMemoryType;
+      if (selectedTemplate.suggestedToolTypes && selectedTemplate.suggestedToolTypes.length > 0) {
+        newConfigData.tools = selectedTemplate.suggestedToolTypes.map(toolType => ({ id: `tool-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`, type: toolType }));
+      }
+
+
       setSystemPrompt(selectedTemplate.systemPrompt);
-      setPromptSource('system-prompt'); // Assume template implies system prompt
+      setPromptSource('system-prompt'); 
       setSelectedTemplateId(selectedTemplate.id);
       setLoadedTemplateDescription(selectedTemplate.description);
       setLoadedTemplateSuggestedTools(selectedTemplate.suggestedToolTypes);
-      onNodeConfigChange(node.id, { 
-        ...node.data, 
-        systemPrompt: selectedTemplate.systemPrompt,
-        promptSource: 'system-prompt',
-        templateId: selectedTemplate.id 
-      });
+      setSelectedMemory(selectedTemplate.defaultMemoryType || null);
+
+
+      onNodeConfigChange(node.id, { ...node.data, ...newConfigData });
     } else if (templateId === "none" && node) {
-      // User selected "No Template" or similar
+      
       setSelectedTemplateId(undefined);
-      // Optionally clear the prompt or revert to a default, or just let user manage it.
-      // For now, just clear template tracking. User can clear prompt manually if desired.
       setLoadedTemplateDescription(undefined);
       setLoadedTemplateSuggestedTools(undefined);
       onNodeConfigChange(node.id, { ...node.data, templateId: undefined });
@@ -209,8 +218,6 @@ export default function AiAgentNodeModal({
   const handleAddOrConfigureTool = (toolType: string) => {
     if (node) {
       const existingTool = node.data?.tools?.find(t => t.type === toolType);
-      // Always open configuration, whether new or existing.
-      // The tool-specific modal or credential manager will handle "new" vs "edit".
       onOpenToolConfiguration(node.id, toolType, existingTool?.id);
     }
   };
@@ -438,7 +445,7 @@ export default function AiAgentNodeModal({
                           icon={toolDef?.icon || Settings2}
                           title={toolDef?.title || `${tool.type.replace(/_API|_TOOL/gi, '')} Tool`}
                           description={`ID: ${tool.id.substring(0,8)}... - Click to reconfigure`}
-                          onClick={() => handleAddOrConfigureTool(tool.type)} // Will open config for this existing tool
+                          onClick={() => handleAddOrConfigureTool(tool.type)} 
                           className={'bg-muted/30'}
                         />
                         );
@@ -453,7 +460,7 @@ export default function AiAgentNodeModal({
                       icon={tool.icon}
                       title={tool.title}
                       description={tool.description}
-                      onClick={() => handleAddOrConfigureTool(tool.type)} // Will open config for adding this new tool
+                      onClick={() => handleAddOrConfigureTool(tool.type)} 
                       className="hover:bg-muted/30"
                     />
                    ))}

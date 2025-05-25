@@ -14,13 +14,15 @@ import WorkflowNameModal from './WorkflowNameModal';
 import ShareWorkflowModal from './ShareWorkflowModal';
 import OpenWorkflowModal from './OpenWorkflowModal';
 import CoinGeckoToolModal from './CoinGeckoToolModal';
-import GitHubApiCredentialModal from './GitHubApiCredentialModal'; 
+import GitHubApiCredentialModal from './GitHubApiCredentialModal';
 import TelegramTriggerNodeModal from './TelegramTriggerNodeModal';
 import LoginModal from './LoginModal';
 import AgentTemplatesModal from './AgentTemplatesModal';
+import StartupChoiceModal from './StartupChoiceModal';
+import LandingPageGenerator from './LandingPageGenerator'; 
 import type { Node, StoredCredential, LLMModel, NodeData, Connection, Workflow, AnyToolConfig, CoinGeckoToolConfig, GitHubApiToolConfig, GoogleDriveToolConfig, DropboxToolConfig, GitLabToolConfig, TrelloToolConfig, BitqueryApiToolConfig, FirebaseToolConfig, NotionToolConfig, BlockchainDataToolConfig, EtherscanApiToolConfig, TheGraphToolConfig, ShopifyAdminToolConfig, PubMedSearchToolConfig, AgentTemplate } from '@/lib/types';
-import { getCredentialById } from '@/lib/credentialsStore';
-import { getAllChatModels, llmProviders } from '@/lib/llmProviders';
+import { getCredentialById, getCredentials } from '@/lib/credentialsStore';
+import { getAllChatModels, llmProviders, getProviderById } from '@/lib/llmProviders';
 import * as workflowStore from '@/lib/workflowStore';
 import { agentTemplates } from '@/lib/agentTemplates';
 import type { PanelGroupHandle, PanelHandle } from "react-resizable-panels";
@@ -34,6 +36,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { processChatMessage, type ProcessChatMessageInput } from '@/ai/flows/process-chat-message-flow';
 import { generalAssistantChat, type GeneralAssistantChatInput } from '@/ai/flows/general-assistant-flow';
 import { useDebounce } from '@/hooks/use-debounce';
+import { LayoutTemplate, WorkflowIcon } from 'lucide-react';
 
 
 interface DraggingState {
@@ -48,6 +51,7 @@ const AI_AGENT_NODE_WIDTH = 256;
 const AI_AGENT_NODE_MIN_HEIGHT = 120;
 const AI_AGENT_CONNECTOR_AREA_HEIGHT = 38;
 const CONNECTED_MODEL_NODE_WIDTH = 200;
+const CONNECTED_MODEL_NODE_HEIGHT = 60;
 const COINGECKO_TOOL_NODE_WIDTH = 200;
 const COINGECKO_TOOL_NODE_HEIGHT = 60;
 const SPACING_BELOW_AI_NODE_CONNECTORS = 40;
@@ -63,7 +67,9 @@ const MAX_ZOOM = 2;
 const ASSISTANT_PANEL_DEFAULT_SIZE = 25;
 const PALETTE_PANEL_DEFAULT_SIZE = 25;
 
+
 export default function InterfaceBuilderClient() {
+  const [currentView, setCurrentView] = useState<'builder' | 'landingCreator' | null>(null);
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | null>(null);
   const [isWorkflowNameModalOpen, setIsWorkflowNameModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -71,6 +77,8 @@ export default function InterfaceBuilderClient() {
   const [isMyWorkflowsModalOpen, setIsMyWorkflowsModalOpen] = useState(false);
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [isAgentTemplatesModalOpen, setIsAgentTemplatesModalOpen] = useState(false);
+  const [isStartupChoiceModalOpen, setIsStartupChoiceModalOpen] = useState(true);
+
 
   const [selectedNodeType, setSelectedNodeType] = useState<string | null>(null);
   const [activeNodes, setActiveNodes] = useState<Node[]>([]);
@@ -84,19 +92,19 @@ export default function InterfaceBuilderClient() {
 
   const [isChatModelSelectionModalOpen, setIsChatModelSelectionModalOpen] = useState(false);
   const [configuringChatModelForNode, setConfiguringChatModelForNode] = useState<Node | null>(null);
-  
-  const [configuringToolDetails, setConfiguringToolDetails] = useState<{ 
-    agentNodeId: string; 
-    toolType: string; 
-    existingToolId?: string; 
-    providerId: string; 
+
+  const [configuringToolDetails, setConfiguringToolDetails] = useState<{
+    agentNodeId: string;
+    toolType: string;
+    existingToolId?: string;
+    providerId: string;
   } | null>(null);
 
 
   const [isCoinGeckoToolModalOpen, setIsCoinGeckoToolModalOpen] = useState(false);
-  const [isGitHubApiCredentialModalOpen, setIsGitHubApiCredentialModalOpen] = useState(false); 
+  const [isGitHubApiCredentialModalOpen, setIsGitHubApiCredentialModalOpen] = useState(false);
   const [agentNodeForToolConfig, setAgentNodeForToolConfig] = useState<Node | null>(null);
-  const [editingToolIdForAgent, setEditingToolIdForAgent] = useState<string | undefined>(undefined); 
+  const [editingToolIdForAgent, setEditingToolIdForAgent] = useState<string | undefined>(undefined);
   const [editingToolConfig, setEditingToolConfig] = useState<CoinGeckoToolConfig | undefined>(undefined);
 
 
@@ -111,7 +119,7 @@ export default function InterfaceBuilderClient() {
   const [isWorkflowAiResponding, setIsWorkflowAiResponding] = useState(false);
   const [processingNodeId, setProcessingNodeId] = useState<string | null>(null);
 
-  const [isAiAssistantPanelOpen, setIsAiAssistantPanelOpen] = useState(false); 
+  const [isAiAssistantPanelOpen, setIsAiAssistantPanelOpen] = useState(false);
   const [assistantMessages, setAssistantMessages] = useState<{ id: string; text: string; sender: 'user' | 'ai' | 'system' }[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
 
@@ -130,8 +138,17 @@ export default function InterfaceBuilderClient() {
   const [isPanning, setIsPanning] = useState(false);
   const [panStartCoords, setPanStartCoords] = useState<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
 
+  const performSave = useCallback((workflowToSave: Workflow) => {
+    const saved = workflowStore.saveWorkflow(workflowToSave);
+    if (saved) {
+      console.log("Workflow explicitly saved:", saved.name);
+    } else {
+      toast({ title: "Save Failed", description: "Could not save the workflow.", variant: "destructive" });
+    }
+    return saved;
+  }, [toast]);
 
-  useEffect(() => {
+  const initializeBuilderEnvironment = useCallback(() => {
     const activeId = workflowStore.getActiveWorkflowId();
     if (activeId) {
       const loadedWorkflow = workflowStore.getWorkflowById(activeId);
@@ -148,26 +165,40 @@ export default function InterfaceBuilderClient() {
     } else {
       const allWorkflows = workflowStore.getAllWorkflows();
       if (allWorkflows.length > 0) {
-        setIsMyWorkflowsModalOpen(true);
+        setIsWorkflowNameModalOpen(true);
+        setIsCreatingNewWorkflow(true);
       } else {
         setIsWorkflowNameModalOpen(true);
         setIsCreatingNewWorkflow(true);
       }
     }
-  }, []);
+  }, [setCurrentWorkflow, setActiveNodes, setConnections, setZoomLevel, setIsWorkflowNameModalOpen, setIsCreatingNewWorkflow]);
 
-  const performSave = useCallback((workflowToSave: Workflow) => {
-    const saved = workflowStore.saveWorkflow(workflowToSave);
-    if (saved) {
-      console.log("Workflow explicitly saved:", saved.name);
-    } else {
-      toast({ title: "Save Failed", description: "Could not save the workflow.", variant: "destructive" });
+
+  const handleStartupChoice = (choice: 'builder' | 'landing') => {
+    setIsStartupChoiceModalOpen(false);
+    if (choice === 'builder') {
+      setCurrentView('builder');
+      initializeBuilderEnvironment();
+    } else if (choice === 'landing') {
+      setCurrentView('landingCreator');
+      // toast({ title: "Landing Page Creator", description: "This feature is coming soon! For now, you're seeing a placeholder." });
     }
-    return saved;
-  }, [toast]);
+  };
+
+  const handleStartupModalOpenChange = (open: boolean) => {
+    if (!open && isStartupChoiceModalOpen && currentView === null) { 
+        setIsStartupChoiceModalOpen(false);
+        setCurrentView('builder'); 
+        initializeBuilderEnvironment();
+    } else if (!open) {
+        setIsStartupChoiceModalOpen(false);
+    }
+  };
+
 
   useEffect(() => {
-    if (currentWorkflow && (debouncedActiveNodes || debouncedConnections || debouncedWorkflowName || debouncedZoomLevel)) {
+    if (currentView === 'builder' && currentWorkflow && (debouncedActiveNodes || debouncedConnections || debouncedWorkflowName || debouncedZoomLevel)) {
       const workflowToSave: Workflow = {
         ...currentWorkflow,
         name: debouncedWorkflowName || currentWorkflow.name,
@@ -179,7 +210,7 @@ export default function InterfaceBuilderClient() {
       workflowStore.saveWorkflow(workflowToSave);
       console.log("Workflow auto-saved:", workflowToSave.name);
     }
-  }, [currentWorkflow, debouncedActiveNodes, debouncedConnections, debouncedWorkflowName, debouncedZoomLevel, activeNodes, connections, zoomLevel, performSave]);
+  }, [currentView, currentWorkflow, debouncedActiveNodes, debouncedConnections, debouncedWorkflowName, debouncedZoomLevel, activeNodes, connections, zoomLevel, performSave]);
 
 
   const handleSaveWorkflowName = (name: string) => {
@@ -261,55 +292,122 @@ export default function InterfaceBuilderClient() {
   };
 
   const handleTemplateSelectedFromModal = (templateId: string) => {
-    if (!currentWorkflow) {
-      toast({ title: "No Active Workflow", description: "Please name your workflow first.", variant: "destructive" });
-      setIsWorkflowNameModalOpen(true);
-      return;
+    if (currentView === 'builder' && !currentWorkflow && !isCreatingNewWorkflow) {
+        toast({ title: "No Active Workflow", description: "Please name your workflow first or select 'Create New Workflow'.", variant: "destructive" });
+        setIsWorkflowNameModalOpen(true);
+        setIsCreatingNewWorkflow(true);
+        return;
     }
 
     const template = agentTemplates.find(t => t.id === templateId);
     if (!template) {
-      toast({ title: "Error", description: "Selected template not found.", variant: "destructive" });
-      return;
+        toast({ title: "Error", description: "Selected template not found.", variant: "destructive" });
+        return;
     }
 
     const newNodesCount = activeNodes.length;
     const basePosition = {
-      x: 100 + (newNodesCount % 5) * (AI_AGENT_NODE_WIDTH + 60),
-      y: 100 + Math.floor(newNodesCount / 5) * (AI_AGENT_NODE_MIN_HEIGHT + 80 + AI_AGENT_CONNECTOR_AREA_HEIGHT + SPACING_BELOW_AI_NODE_CONNECTORS),
+        x: 100 + (newNodesCount % 5) * (AI_AGENT_NODE_WIDTH + 60),
+        y: 100 + Math.floor(newNodesCount / 5) * (AI_AGENT_NODE_MIN_HEIGHT + 80 + AI_AGENT_CONNECTOR_AREA_HEIGHT + SPACING_BELOW_AI_NODE_CONNECTORS),
     };
 
-    const suggestedTools: AnyToolConfig[] = [];
-    if (template.suggestedToolTypes && Array.isArray(template.suggestedToolTypes)) {
-      template.suggestedToolTypes.forEach(toolType => {
-        suggestedTools.push({ id: `tool-${uuidv4()}`, type: toolType });
-      });
-    }
-
-    const newNode: Node = {
-      id: `node-${uuidv4()}`,
-      type: 'AI_AGENT',
-      name: `Agent from ${template.name}`,
-      position: basePosition,
-      data: {
+    let agentNodeData: Partial<NodeData> = {
         title: template.name,
         subTitle: template.description.substring(0, 50) + (template.description.length > 50 ? '...' : ''),
         isDisabled: false,
         promptSource: 'system-prompt',
         systemPrompt: template.systemPrompt,
         templateId: template.id,
-        tools: suggestedTools,
+        memoryType: template.defaultMemoryType || null,
+        selectedModelId: template.defaultModelId,
+        selectedProviderId: template.defaultProviderId,
         connectors: {
-          'input-trigger': { type: 'input' },
-          'output-main': { type: 'output' },
-          'output-chat-model': { type: 'output' },
-          'output-memory': { type: 'output' },
-          'output-tools': { type: 'output' },
+            'input-trigger': { type: 'input' },
+            'output-main': { type: 'output' },
+            'output-chat-model': { type: 'output' },
+            'output-memory': { type: 'output' },
+            'output-tools': { type: 'output' },
         }
-      }
     };
-    setActiveNodes(prevNodes => [...prevNodes, newNode]);
-    toast({ title: "Agent Created", description: `Created '${newNode.name}' from template. Suggested tools have been added; please configure them.`});
+    
+    if (template.suggestedToolTypes && Array.isArray(template.suggestedToolTypes)) {
+        agentNodeData.tools = template.suggestedToolTypes.map(toolType => ({
+            id: `tool-${uuidv4()}`,
+            type: toolType
+        }));
+    }
+
+    let newAgentNode: Node = {
+        id: `node-${uuidv4()}`,
+        type: 'AI_AGENT',
+        name: `Agent from ${template.name}`,
+        position: basePosition,
+        data: agentNodeData as NodeData,
+    };
+
+    let newNodesList = [...activeNodes];
+    let newConnectionsList = [...connections];
+
+    if (template.defaultProviderId && template.defaultModelId) {
+        const allCreds = getCredentials(template.defaultProviderId);
+        const validModelCred = allCreds.find(c =>
+            (c.modelId === template.defaultModelId || !c.modelId) && // Check for model-specific or provider-generic cred
+            c.status === 'valid'
+        );
+
+        if (validModelCred && newAgentNode.data) {
+            const model = getAllChatModels().find(m => m.id === template.defaultModelId && m.providerId === template.defaultProviderId);
+            if (model) {
+                newAgentNode.data.chatModelCredentialId = validModelCred.id;
+                newAgentNode.data.selectedModelId = model.id;
+                newAgentNode.data.selectedProviderId = model.providerId;
+                newAgentNode.data.chatModelCredentialStatus = 'valid';
+                newAgentNode.data.chatModelValidationError = undefined;
+
+                const connectedModelNodeId = `cnode-${uuidv4()}`;
+                newAgentNode.data.connectedChatModelNodeId = connectedModelNodeId;
+
+                const connectedModelNodeData: NodeData = {
+                    modelName: model.name,
+                    providerName: model.providerName,
+                    providerId: model.providerId,
+                    credentialId: validModelCred.id,
+                    status: 'valid',
+                    validationError: undefined,
+                    aiAgentNodeId: newAgentNode.id,
+                    isDisabled: false,
+                    connectors: { 'input-main': { type: 'input' } }
+                };
+
+                const newConnectedNodeX = basePosition.x + (AI_AGENT_NODE_WIDTH / 6) - (CONNECTED_MODEL_NODE_WIDTH / 2);
+                const newConnectedNodeY = basePosition.y + AI_AGENT_NODE_MIN_HEIGHT + AI_AGENT_CONNECTOR_AREA_HEIGHT + SPACING_BELOW_AI_NODE_CONNECTORS;
+
+                newNodesList.push({
+                    id: connectedModelNodeId,
+                    type: 'CONNECTED_CHAT_MODEL',
+                    name: `Model: ${model.name}`,
+                    position: { x: newConnectedNodeX, y: newConnectedNodeY },
+                    data: connectedModelNodeData,
+                });
+
+                newConnectionsList.push({
+                    id: `conn-model-${uuidv4()}`,
+                    fromNodeId: newAgentNode.id,
+                    fromConnectorId: 'output-chat-model',
+                    toNodeId: connectedModelNodeId,
+                    toConnectorId: 'input-main',
+                });
+            }
+        } else if (template.defaultModelId) { 
+            toast({ title: "Default Model Not Auto-Connected", description: `Could not find a valid pre-existing credential for the template's default model (${template.defaultModelId}). Please configure the chat model manually for the new agent.`, duration: 8000 });
+        }
+    }
+    
+    newNodesList.push(newAgentNode);
+    setActiveNodes(newNodesList);
+    setConnections(newConnectionsList);
+
+    toast({ title: "Agent Created from Template", description: `Created '${newAgentNode.name}'. Review its configuration and connect any necessary triggers or tools.`});
     setIsAgentTemplatesModalOpen(false);
   };
 
@@ -349,9 +447,10 @@ export default function InterfaceBuilderClient() {
 
 
   const handleNodeSelect = (nodeType: string) => {
-    if (!currentWorkflow) {
+    if (!currentWorkflow && !isCreatingNewWorkflow) {
       toast({ title: "No Active Workflow", description: "Please name your workflow first.", variant: "destructive" });
       setIsWorkflowNameModalOpen(true);
+      setIsCreatingNewWorkflow(true);
       return;
     }
 
@@ -363,7 +462,7 @@ export default function InterfaceBuilderClient() {
     const newNodesCount = activeNodes.length;
     const basePosition = {
         x: 50 + (newNodesCount % 5) * (AI_AGENT_NODE_WIDTH + 30),
-        y: 50 + Math.floor(newNodesCount / 5) * (AI_AGENT_NODE_MIN_HEIGHT + 50)
+        y: 50 + Math.floor(newNodesCount / 5) * (AI_AGENT_NODE_MIN_HEIGHT + 50 + AI_AGENT_CONNECTOR_AREA_HEIGHT + SPACING_BELOW_AI_NODE_CONNECTORS)
     };
 
     switch (nodeType) {
@@ -427,7 +526,7 @@ export default function InterfaceBuilderClient() {
       } else if (nodeToEdit.type === 'CONNECTED_CHAT_MODEL' && nodeToEdit.data?.aiAgentNodeId) {
         const parentAgentNode = activeNodes.find(n => n.id === nodeToEdit.data.aiAgentNodeId);
         if (parentAgentNode) {
-            setConfiguringChatModelForNode(parentAgentNode); 
+            setConfiguringChatModelForNode(parentAgentNode);
             setIsChatModelSelectionModalOpen(true);
         } else {
             toast({title: "Error", description: "Parent AI Agent node not found for this model.", variant: "destructive"});
@@ -459,51 +558,50 @@ export default function InterfaceBuilderClient() {
       }
     }
   };
-  
+
   const handleOpenToolConfigurationModal = (agentNodeId: string, toolType: string, existingToolId?: string) => {
     const agentNode = activeNodes.find(n => n.id === agentNodeId);
     if (!agentNode) {
       toast({ title: "Error", description: `Agent node ${agentNodeId} not found.`, variant: "destructive" });
       return;
     }
-  
-    setAgentNodeForToolConfig(agentNode); 
+
+    setAgentNodeForToolConfig(agentNode);
     setEditingToolIdForAgent(existingToolId);
-  
+
     if (toolType === 'COINGECKO') {
       const tool = agentNode.data?.tools?.find(t => t.id === existingToolId && t.type === 'COINGECKO') as CoinGeckoToolConfig | undefined;
-      setEditingToolConfig(tool); 
+      setEditingToolConfig(tool);
       setIsCoinGeckoToolModalOpen(true);
     } else if (toolType === 'GITHUB_API') {
       setIsGitHubApiCredentialModalOpen(true);
-    } else if (['GOOGLE_DRIVE_API', 'DROPBOX_API', 'GITLAB_API', 'TRELLO_API', 'BITQUERY_API', 'FIREBASE_TOOL', 'NOTION_TOOL', 'BLOCKCHAIN_DATA_TOOL', 'ETHERSCAN_API', 'THE_GRAPH_API', 'SHOPIFY_ADMIN_TOOL', 'PUBMED_SEARCH_TOOL'].includes(toolType)) {
-      const providerIdForTool = toolType.toLowerCase().replace('_tool', '_api');
-      const provider = llmProviders.find(p => p.id === providerIdForTool);
-      if (!provider) {
-        toast({ title: "Error", description: `Provider details for ${toolType} (mapped to ${providerIdForTool}) not found.`, variant: "destructive"});
-        return;
-      }
-      setConfiguringToolDetails({
-        agentNodeId: agentNode.id,
-        toolType: toolType,
-        existingToolId: existingToolId,
-        providerId: provider.id,
-      });
-      setConfiguringChatModelForNode(null); 
-      setIsChatModelSelectionModalOpen(true); 
     } else {
-      toast({ title: "Tool Configuration", description: `Configuration modal for ${toolType} tool not yet implemented. Manage credentials via the Chat Model or generic credential system if applicable.` , duration: 5000 });
-      setAgentNodeForToolConfig(null);
-      setEditingToolIdForAgent(undefined);
+      const providerIdForTool = toolType.toLowerCase().replace('_tool', '').replace('_api', '_api');
+      const provider = getProviderById(providerIdForTool);
+      if (provider) {
+         setConfiguringToolDetails({
+          agentNodeId: agentNode.id,
+          toolType: toolType,
+          existingToolId: existingToolId,
+          providerId: provider.id,
+        });
+        setConfiguringChatModelForNode(null); 
+        setIsChatModelSelectionModalOpen(true);
+      } else {
+        toast({ title: "Tool Configuration", description: `Configuration for ${toolType} tool via generic credential modal not yet fully set up or provider ID mismatch.`, duration: 5000 });
+        setAgentNodeForToolConfig(null);
+        setEditingToolIdForAgent(undefined);
+      }
     }
   };
-  
+
+
   const handleOpenGitHubApiCredentialModal = (agentNodeId: string, existingToolId?: string) => {
     const agentNode = activeNodes.find(n => n.id === agentNodeId);
     if (agentNode) {
       setAgentNodeForToolConfig(agentNode);
       setEditingToolIdForAgent(existingToolId);
-      setIsGitHubApiCredentialModalOpen(true); 
+      setIsGitHubApiCredentialModalOpen(true);
     } else {
        toast({ title: "Error", description: "Agent node not found for GitHub tool configuration.", variant: "destructive" });
     }
@@ -530,7 +628,7 @@ export default function InterfaceBuilderClient() {
         let updatedNodeData = { ...node.data, tools: updatedTools };
 
         if (toolConfig.type === 'COINGECKO') {
-          const visualToolNodeId = `cgdisp-${agentNodeId}`; 
+          const visualToolNodeId = `cgdisp-${agentNodeId}`;
           const existingVisualToolNode = newNodes.find(n => n.id === visualToolNodeId);
 
           if (!existingVisualToolNode) {
@@ -546,13 +644,13 @@ export default function InterfaceBuilderClient() {
               position: newToolNodePosition,
               data: {
                 parentAiAgentId: agentNodeId,
-                representedToolId: toolConfig.id, 
+                representedToolId: toolConfig.id,
                 isDisabled: false,
                 connectors: { 'input-main': { type: 'input' } },
               },
             };
             newNodes.push(newToolDisplayNode);
-             updatedNodeData.coingeckoToolNodeId = visualToolNodeId; 
+             updatedNodeData.coingeckoToolNodeId = visualToolNodeId;
 
             const newConnection: Connection = {
               id: `conn-tool-${uuidv4()}`,
@@ -578,7 +676,7 @@ export default function InterfaceBuilderClient() {
 
     toast({ title: "Tool Saved", description: `${toolConfig.type.replace(/_API|_TOOL/gi, '')} tool configuration updated for agent.` });
     setIsCoinGeckoToolModalOpen(false);
-    setIsGitHubApiCredentialModalOpen(false); 
+    setIsGitHubApiCredentialModalOpen(false);
     setAgentNodeForToolConfig(null);
     setEditingToolConfig(undefined);
     setEditingToolIdForAgent(undefined);
@@ -587,47 +685,88 @@ export default function InterfaceBuilderClient() {
 
 
   const handleNodeConfigChange = (nodeId: string, data: Partial<Node['data']>) => {
-    let requiresConnectedNodeUpdate = false;
+    let newNodesList = [...activeNodes];
+    let newConnectionsList = [...connections];
+    let requiresConnectedModelUpdate = false;
     let connectedModelNodeIdToUpdate: string | undefined;
     let newConnectedNodeData: Partial<NodeData> = {};
 
-    setActiveNodes(prevNodes =>
-      prevNodes.map(node => {
-        if (node.id === nodeId) {
-          const updatedNode = { ...node, data: { ...node.data, ...data } };
-          if (node.type === 'AI_AGENT' && (data.selectedModelId || data.chatModelCredentialStatus || data.chatModelCredentialId)) {
-            requiresConnectedNodeUpdate = true;
-            connectedModelNodeIdToUpdate = updatedNode.data?.connectedChatModelNodeId;
+    const parentNodeIndex = newNodesList.findIndex(n => n.id === nodeId);
+    if (parentNodeIndex === -1) return;
 
-            const model = getAllChatModels().find(m => m.id === data.selectedModelId || m.id === node.data?.selectedModelId);
-            const provider = model ? llmProviders.find(p => p.id === data.selectedProviderId || p.id === node.data?.selectedProviderId || p.id === model.providerId) : null;
-            const credential = getCredentialById(data.chatModelCredentialId || node.data?.chatModelCredentialId || '');
+    const oldNode = newNodesList[parentNodeIndex];
+    const updatedNode = { ...oldNode, data: { ...oldNode.data, ...data } };
+    newNodesList[parentNodeIndex] = updatedNode;
 
+    if (updatedNode.type === 'AI_AGENT' &&
+        (data.selectedModelId !== oldNode.data?.selectedModelId ||
+         data.chatModelCredentialId !== oldNode.data?.chatModelCredentialId ||
+         data.chatModelCredentialStatus !== oldNode.data?.chatModelCredentialStatus
+        )
+    ) {
+        requiresConnectedModelUpdate = true;
+        connectedModelNodeIdToUpdate = updatedNode.data?.connectedChatModelNodeId;
 
+        const model = getAllChatModels().find(m => m.id === updatedNode.data?.selectedModelId);
+        const provider = model ? llmProviders.find(p => p.id === updatedNode.data?.selectedProviderId || p.id === model.providerId) : null;
+        const credential = getCredentialById(updatedNode.data?.chatModelCredentialId || '');
+
+        if (model && provider && credential && credential.status === 'valid') {
             newConnectedNodeData = {
-                modelName: model?.name,
-                providerName: provider?.name,
-                providerId: provider?.id,
-                credentialId: credential?.id,
-                status: credential?.status,
-                validationError: credential?.validationError,
+                modelName: model.name,
+                providerName: provider.name,
+                providerId: provider.id,
+                credentialId: credential.id,
+                status: credential.status,
+                validationError: credential.validationError,
+                aiAgentNodeId: updatedNode.id,
+                isDisabled: false,
+                connectors: { 'input-main': { type: 'input' } }
             };
-          }
-          return updatedNode;
-        }
-        return node;
-      })
-    );
 
-    if (requiresConnectedNodeUpdate && connectedModelNodeIdToUpdate) {
-        setActiveNodes(prevNodes =>
-            prevNodes.map(node =>
-                node.id === connectedModelNodeIdToUpdate
-                ? { ...node, data: { ...node.data, ...newConnectedNodeData } }
-                : node
-            )
-        );
+            if (connectedModelNodeIdToUpdate) {
+                const nodeIndex = newNodesList.findIndex(n => n.id === connectedModelNodeIdToUpdate);
+                if (nodeIndex > -1) {
+                    newNodesList[nodeIndex] = {
+                        ...newNodesList[nodeIndex],
+                        data: { ...newNodesList[nodeIndex].data, ...newConnectedNodeData }
+                    };
+                }
+            } else {
+                const newConnectedModelNodeId = `cnode-${uuidv4()}`;
+                updatedNode.data!.connectedChatModelNodeId = newConnectedModelNodeId;
+                newNodesList[parentNodeIndex] = updatedNode; 
+
+                const agentNodePosition = updatedNode.position || { x: 100, y: 100 };
+                const newConnectedNodeX = agentNodePosition.x + (AI_AGENT_NODE_WIDTH / 6) - (CONNECTED_MODEL_NODE_WIDTH / 2);
+                const newConnectedNodeY = agentNodePosition.y + AI_AGENT_NODE_MIN_HEIGHT + AI_AGENT_CONNECTOR_AREA_HEIGHT + SPACING_BELOW_AI_NODE_CONNECTORS;
+
+                newNodesList.push({
+                    id: newConnectedModelNodeId,
+                    type: 'CONNECTED_CHAT_MODEL',
+                    name: `Model: ${model.name}`,
+                    position: { x: newConnectedNodeX, y: newConnectedNodeY },
+                    data: newConnectedNodeData as NodeData,
+                });
+
+                newConnectionsList.push({
+                    id: `conn-model-${uuidv4()}`,
+                    fromNodeId: updatedNode.id,
+                    fromConnectorId: 'output-chat-model',
+                    toNodeId: newConnectedModelNodeId,
+                    toConnectorId: 'input-main',
+                });
+            }
+        } else if (connectedModelNodeIdToUpdate) { 
+             newNodesList = newNodesList.filter(n => n.id !== connectedModelNodeIdToUpdate);
+             newConnectionsList = newConnectionsList.filter(c => !(c.toNodeId === connectedModelNodeIdToUpdate && c.fromNodeId === updatedNode.id && c.fromConnectorId === 'output-chat-model'));
+             delete updatedNode.data!.connectedChatModelNodeId;
+             newNodesList[parentNodeIndex] = updatedNode; 
+        }
     }
+
+    setActiveNodes(newNodesList);
+    setConnections(newConnectionsList);
   };
 
   const handleAiAgentModalOpenChange = (open: boolean) => {
@@ -635,10 +774,12 @@ export default function InterfaceBuilderClient() {
     if (!open) {
       if (editingNodeId) {
         setEditingNodeId(null);
-      } else if (selectedNodeType === 'AI_AGENT' && !editingNodeId) {
-         if (!currentWorkflow) {
-          toast({ title: "Workflow Not Ready", description: "Cannot add agent without an active workflow.", variant: "destructive"});
-          setSelectedNodeType(null);
+      } else if (selectedNodeType === 'AI_AGENT' && !editingNodeId) { 
+         if (!currentWorkflow && !isCreatingNewWorkflow) {
+          toast({ title: "Workflow Not Ready", description: "Cannot add agent without an active workflow. Please name your workflow first.", variant: "destructive"});
+          setSelectedNodeType(null); 
+          setIsWorkflowNameModalOpen(true);
+          setIsCreatingNewWorkflow(true);
           return;
         }
         const newNodesCount = activeNodes.filter(n => n.type === 'AI_AGENT').length;
@@ -654,9 +795,9 @@ export default function InterfaceBuilderClient() {
           position: basePosition,
           data: {
             title: newNodeName,
-            subTitle: 'Tools Agent',
+            subTitle: 'Tools Agent', 
             isDisabled: false,
-            promptSource: 'chat-trigger',
+            promptSource: 'chat-trigger', 
             connectors: {
                 'input-trigger': { type: 'input' },
                 'output-main': { type: 'output' },
@@ -668,7 +809,7 @@ export default function InterfaceBuilderClient() {
         };
         setActiveNodes(prevNodes => [...prevNodes, newNode]);
       }
-      setSelectedNodeType(null);
+      setSelectedNodeType(null); 
       setInitialModalSection(undefined);
     }
   };
@@ -691,10 +832,9 @@ export default function InterfaceBuilderClient() {
     );
     toast({ title: "Telegram Trigger Updated", description: "Bot token configuration saved." });
   };
-  
-  const handleCredentialSelectedFromManager = (credentialId: string, modelId: string) => { // modelId might be irrelevant for generic tools
+
+  const handleCredentialSelectedFromManager = (credentialId: string, modelId: string) => { // modelId is for LLM model
     if (configuringToolDetails) {
-      // Configuring a generic tool's credential
       const { agentNodeId, toolType, existingToolId } = configuringToolDetails;
       const agentNode = activeNodes.find(n => n.id === agentNodeId);
       if (!agentNode) {
@@ -712,9 +852,6 @@ export default function InterfaceBuilderClient() {
         case 'DROPBOX_API':
           newToolConfig = { id: newToolInstanceId, type: 'DROPBOX_API', credentialId };
           break;
-        case 'GOOGLE_DRIVE_API':
-          newToolConfig = { id: newToolInstanceId, type: 'GOOGLE_DRIVE_API', credentialId };
-          break;
         case 'GITLAB_API':
           newToolConfig = { id: newToolInstanceId, type: 'GITLAB_API', credentialId };
           break;
@@ -731,34 +868,39 @@ export default function InterfaceBuilderClient() {
           newToolConfig = { id: newToolInstanceId, type: 'NOTION_TOOL', credentialId };
           break;
         case 'BLOCKCHAIN_DATA_TOOL':
-            newToolConfig = { id: newToolInstanceId, type: 'BLOCKCHAIN_DATA_TOOL', credentialId }; 
-            break;
+          newToolConfig = { id: newToolInstanceId, type: 'BLOCKCHAIN_DATA_TOOL', credentialId };
+          break;
         case 'ETHERSCAN_API':
-             newToolConfig = { id: newToolInstanceId, type: 'ETHERSCAN_API', credentialId, baseUrl: selectedCred?.endpoint };
-            break;
+          newToolConfig = { 
+            id: newToolInstanceId, 
+            type: 'ETHERSCAN_API', 
+            credentialId, 
+            baseUrl: selectedCred?.endpoint 
+          };
+          break;
         case 'THE_GRAPH_API':
-            newToolConfig = { 
-                id: newToolInstanceId, 
-                type: 'THE_GRAPH_API', 
-                subgraphQueryUrl: selectedCred?.endpoint || '', 
-                credentialId: selectedCred?.apiKey ? credentialId : undefined 
-            };
-            break;
+          newToolConfig = {
+            id: newToolInstanceId,
+            type: 'THE_GRAPH_API',
+            subgraphQueryUrl: selectedCred?.endpoint || '', 
+            credentialId: selectedCred?.apiKey ? credentialId : undefined 
+          };
+          break;
         case 'SHOPIFY_ADMIN_TOOL':
-            newToolConfig = {
-                id: newToolInstanceId,
-                type: 'SHOPIFY_ADMIN_TOOL',
-                credentialId,
-                storeUrl: selectedCred?.endpoint || '', // Store URL stored in credential's endpoint
-            };
-            break;
+          newToolConfig = {
+            id: newToolInstanceId,
+            type: 'SHOPIFY_ADMIN_TOOL',
+            credentialId, 
+            storeUrl: selectedCred?.endpoint || '', 
+          };
+          break;
         case 'PUBMED_SEARCH_TOOL':
-            newToolConfig = {
-                id: newToolInstanceId,
-                type: 'PUBMED_SEARCH_TOOL',
-                credentialId: selectedCred?.apiKey ? credentialId : undefined, // API key is optional for PubMed
-            };
-            break;
+          newToolConfig = {
+            id: newToolInstanceId,
+            type: 'PUBMED_SEARCH_TOOL',
+            credentialId: selectedCred?.apiKey ? credentialId : undefined, 
+          };
+          break;
         default:
           toast({ title: "Error", description: `Unknown tool type for credential: ${toolType}`, variant: "destructive" });
           setConfiguringToolDetails(null);
@@ -766,22 +908,21 @@ export default function InterfaceBuilderClient() {
           return;
       }
       handleSaveToolConfig(agentNodeId, newToolConfig); 
-      setConfiguringToolDetails(null);
+      setConfiguringToolDetails(null); 
 
     } else if (configuringChatModelForNode && configuringChatModelForNode.type === 'AI_AGENT') {
-      // Configuring an AI Agent's primary chat model
       const parentNode = configuringChatModelForNode;
       const credential = getCredentialById(credentialId);
-      const model = getAllChatModels().find(m => m.id === modelId);
+      const model = getAllChatModels().find(m => m.id === modelId); 
       const provider = model ? llmProviders.find(p => p.id === model.providerId) : null;
-  
+
       if (!credential || !model || !provider) {
         toast({title: "Error", description: "Could not configure chat model. Required details missing.", variant: "destructive"});
         setConfiguringChatModelForNode(null);
         setIsChatModelSelectionModalOpen(false);
         return;
       }
-  
+
       const aiAgentUpdateData: Partial<NodeData> = {
         chatModelCredentialId: credential.id,
         selectedModelId: model.id,
@@ -789,7 +930,7 @@ export default function InterfaceBuilderClient() {
         chatModelCredentialStatus: credential.status,
         chatModelValidationError: credential.validationError,
       };
-  
+
       const connectedNodeDataUpdate: NodeData = {
         modelName: model.name,
         providerName: provider.name,
@@ -801,22 +942,20 @@ export default function InterfaceBuilderClient() {
         isDisabled: false,
         connectors: { 'input-main': { type: 'input' } }
       };
-  
+
       let newNodesList = [...activeNodes];
       const parentNodeIndex = newNodesList.findIndex(n => n.id === parentNode.id);
-  
-      if (parentNodeIndex === -1) {
-          // Should not happen if configuringChatModelForNode is set
+
+      if (parentNodeIndex === -1) { 
           setConfiguringChatModelForNode(null);
           setIsChatModelSelectionModalOpen(false);
           return;
       }
-  
+
       let connectedNodeId = parentNode.data?.connectedChatModelNodeId;
       let existingConnectedNode = connectedNodeId ? newNodesList.find(n => n.id === connectedNodeId) : null;
-  
+
       if (existingConnectedNode) {
-        // Update existing connected model node
         const nodeIndex = newNodesList.findIndex(n => n.id === existingConnectedNode!.id);
         if (nodeIndex > -1) {
           newNodesList[nodeIndex] = {
@@ -825,33 +964,53 @@ export default function InterfaceBuilderClient() {
           };
         }
       } else {
-        // Create new connected model node
+        const newConnectedModelNodeId = `cnode-${uuidv4()}`;
+        aiAgentUpdateData.connectedChatModelNodeId = newConnectedModelNodeId; 
+
         const agentNodePosition = parentNode.position || { x: 100, y: 100 };
-        // Position below the "Chat Model*" connector of the AI Agent
-        const newConnectedNodeX = agentNodePosition.x + (AI_AGENT_NODE_WIDTH / 6) - (CONNECTED_MODEL_NODE_WIDTH / 2); // Align with first diamond
+        const newConnectedNodeX = agentNodePosition.x + (AI_AGENT_NODE_WIDTH / 6) - (CONNECTED_MODEL_NODE_WIDTH / 2);
         const newConnectedNodeY = agentNodePosition.y + AI_AGENT_NODE_MIN_HEIGHT + AI_AGENT_CONNECTOR_AREA_HEIGHT + SPACING_BELOW_AI_NODE_CONNECTORS;
-  
+
         const newConnectedNode: Node = {
-          id: `cnode-${uuidv4()}`,
+          id: newConnectedModelNodeId,
           type: 'CONNECTED_CHAT_MODEL',
           name: `Model: ${model.name}`,
           position: { x: newConnectedNodeX, y: newConnectedNodeY },
           data: connectedNodeDataUpdate,
         };
         newNodesList.push(newConnectedNode);
-        aiAgentUpdateData.connectedChatModelNodeId = newConnectedNode.id; // Link AI Agent to this new visual node
       }
-  
-      // Update the AI Agent node itself
+
       newNodesList[parentNodeIndex] = {
           ...newNodesList[parentNodeIndex],
           data: { ...newNodesList[parentNodeIndex].data, ...aiAgentUpdateData}
       };
-  
+
       setActiveNodes(newNodesList);
+
+      const currentConnections = Array.isArray(connections) ? connections : [];
+      let updatedConnections = [...currentConnections];
+
+      if(connectedNodeId && connectedNodeId !== aiAgentUpdateData.connectedChatModelNodeId) {
+          updatedConnections = updatedConnections.filter(c => !(c.toNodeId === connectedNodeId && c.fromNodeId === parentNode.id && c.fromConnectorId === 'output-chat-model'));
+      }
+      if (aiAgentUpdateData.connectedChatModelNodeId && (!connectedNodeId || connectedNodeId !== aiAgentUpdateData.connectedChatModelNodeId)) {
+          const existingConnection = updatedConnections.find(c => c.fromNodeId === parentNode.id && c.fromConnectorId === 'output-chat-model' && c.toNodeId === aiAgentUpdateData.connectedChatModelNodeId);
+          if(!existingConnection) {
+              updatedConnections.push({
+                id: `conn-model-${uuidv4()}`,
+                fromNodeId: parentNode.id,
+                fromConnectorId: 'output-chat-model',
+                toNodeId: aiAgentUpdateData.connectedChatModelNodeId,
+                toConnectorId: 'input-main',
+              });
+          }
+      }
+      setConnections(updatedConnections);
+
+
       toast({title: "Chat Model Configured", description: `${model.name} has been linked to ${parentNode.name}.`});
     }
-    // Reset states
     setIsChatModelSelectionModalOpen(false);
     setConfiguringChatModelForNode(null);
     setConfiguringToolDetails(null);
@@ -872,19 +1031,22 @@ export default function InterfaceBuilderClient() {
       return;
     }
 
+    if (fromNode.data?.connectors?.[fromConnectorId]?.type !== 'output' || toConnectorType !== 'input') {
+       toast({ title: "Connection Invalid", description: "Connections must be from an output to an input.", variant: "destructive"});
+       return;
+    }
+
     const isTriggerToAgent =
         (fromNode.type === 'CHAT_TRIGGER' || fromNode.type === 'TELEGRAM_TRIGGER') &&
         fromConnectorId === 'output' &&
         toNode.type === 'AI_AGENT' &&
-        toConnectorId === 'input-trigger' &&
-        toConnectorType === 'input';
+        toConnectorId === 'input-trigger';
 
     const isAgentToAgent =
         fromNode.type === 'AI_AGENT' &&
         fromConnectorId === 'output-main' &&
         toNode.type === 'AI_AGENT' &&
-        toConnectorId === 'input-trigger' &&
-        toConnectorType === 'input';
+        toConnectorId === 'input-trigger';
 
     if (isTriggerToAgent || isAgentToAgent) {
         if (connections.some(c => c.toNodeId === toNodeId && c.toConnectorId === toConnectorId)) {
@@ -921,15 +1083,16 @@ export default function InterfaceBuilderClient() {
             }
 
             if (nodeDataChanged) {
-              return { ...n, data: { ...(n.data || {}), connectors: newConnectors }};
+              return { ...n, data: { ...(n.data || {}), connectors: newConnectors, inputConnected: (n.id === toNode.id ? true : n.data?.inputConnected), outputConnected: (n.id === fromNode.id ? true : n.data?.outputConnected) }};
             }
             return n;
         }));
         toast({ title: "Connection Created", description: `Connected ${fromNode.name} to ${toNode.name}.` });
     } else {
-      toast({ title: "Connection Invalid", description: "These node types or connectors are not compatible.", variant: "destructive"});
+      toast({ title: "Connection Invalid", description: "These node types or connectors are not compatible for direct connection.", variant: "destructive"});
     }
   }, [drawingLineState, activeNodes, connections, toast]);
+
 
   const handleNodeDragStart = (nodeId: string, event: React.MouseEvent<HTMLDivElement>) => {
     const nodeToDrag = activeNodes.find(n => n.id === nodeId);
@@ -938,12 +1101,12 @@ export default function InterfaceBuilderClient() {
       if (target.closest('button, input, textarea, select, [role="button"], [data-interactive="true"], [data-connector-id]')) {
         return;
       }
-      event.preventDefault();
+      event.preventDefault(); 
 
       setDraggingState({
         nodeId,
-        startMouseX: event.clientX / zoomLevel,
-        startMouseY: event.clientY / zoomLevel,
+        startMouseX: event.clientX / zoomLevel, 
+        startMouseY: event.clientY / zoomLevel, 
         startNodeX: nodeToDrag.position.x,
         startNodeY: nodeToDrag.position.y,
       });
@@ -992,31 +1155,31 @@ export default function InterfaceBuilderClient() {
       document.body.style.cursor = 'default';
       document.body.style.userSelect = 'auto';
     };
-  }, [draggingState, zoomLevel]);
+  }, [draggingState, zoomLevel]); 
 
 
   const transformToCanvasCoordinates = useCallback((clientX: number, clientY: number): { x: number, y: number } => {
     if (!canvasAreaRef.current) return { x: clientX, y: clientY };
 
     const scalableDiv = canvasAreaRef.current.querySelector('[data-canvas-area="true"]') as HTMLElement;
-    if (!scalableDiv) return {x: clientX, y: clientY};
+    if (!scalableDiv) return {x: clientX, y: clientY}; 
 
     const rect = scalableDiv.getBoundingClientRect();
     return {
       x: (clientX - rect.left) / zoomLevel,
       y: (clientY - rect.top) / zoomLevel,
     };
-  }, [zoomLevel, canvasAreaRef]);
+  }, [zoomLevel, canvasAreaRef]); 
 
   const handleStartLineDraw = useCallback((nodeId: string, connectorId: string, globalPosition: { x: number; y: number }, event: React.MouseEvent) => {
-    event.preventDefault();
-    event.stopPropagation();
+    event.preventDefault(); 
+    event.stopPropagation(); 
 
     setDrawingLineState({
       fromNodeId: nodeId,
       fromConnectorId: connectorId,
-      fromPosition: globalPosition,
-      toPosition: globalPosition,
+      fromPosition: globalPosition, 
+      toPosition: globalPosition,   
     });
   }, [setDrawingLineState]); 
 
@@ -1025,7 +1188,13 @@ export default function InterfaceBuilderClient() {
       const { x, y } = transformToCanvasCoordinates(event.clientX, event.clientY);
       setDrawingLineState(prev => prev ? { ...prev, toPosition: { x, y } } : null);
     }
-  }, [drawingLineState, transformToCanvasCoordinates, setDrawingLineState]);
+    if (isPanning && panStartCoords && canvasAreaRef.current) {
+        const dx = event.clientX - panStartCoords.x;
+        const dy = event.clientY - panStartCoords.y;
+        canvasAreaRef.current.scrollLeft = panStartCoords.scrollLeft - dx; 
+        canvasAreaRef.current.scrollTop = panStartCoords.scrollTop - dy;
+    }
+  }, [drawingLineState, transformToCanvasCoordinates, setDrawingLineState, isPanning, panStartCoords, canvasAreaRef]);
 
   const handleCanvasMouseUp = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
     if (drawingLineState) {
@@ -1041,11 +1210,16 @@ export default function InterfaceBuilderClient() {
 
         handleAttemptConnection(toNodeId, toConnectorId, toConnectorType);
       } else {
-        toast({ title: "Connection Canceled", description: "Line dropped on empty space.", variant: "default" });
+        toast({ title: "Connection Canceled", description: "Line dropped on empty space or invalid target.", variant: "default" });
       }
-      setDrawingLineState(null);
+      setDrawingLineState(null); 
     }
-  }, [drawingLineState, handleAttemptConnection, setDrawingLineState, toast]);
+    if (isPanning) {
+        setIsPanning(false);
+        setPanStartCoords(null);
+        document.body.style.cursor = 'default';
+    }
+  }, [drawingLineState, handleAttemptConnection, setDrawingLineState, toast, isPanning, setIsPanning, setPanStartCoords]);
 
 
   const handleConnectorMouseUp = useCallback((toNodeId: string, toConnectorId: string, toConnectorType: 'input' | 'output', globalPosition: { x: number, y: number }, event: React.MouseEvent) => {
@@ -1053,9 +1227,9 @@ export default function InterfaceBuilderClient() {
         event.preventDefault();
         event.stopPropagation();
         handleAttemptConnection(toNodeId, toConnectorId, toConnectorType);
-        setDrawingLineState(null);
+        setDrawingLineState(null); 
     }
-  }, [drawingLineState, handleAttemptConnection]);
+  }, [drawingLineState, handleAttemptConnection]); 
 
 
   const handleCanvasMouseDown = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
@@ -1064,11 +1238,11 @@ export default function InterfaceBuilderClient() {
       return;
     }
     if (!canvasAreaRef.current) return;
-    event.preventDefault();
+    event.preventDefault(); 
 
     setIsPanning(true);
     setPanStartCoords({
-      x: event.clientX,
+      x: event.clientX, 
       y: event.clientY,
       scrollLeft: canvasAreaRef.current.scrollLeft,
       scrollTop: canvasAreaRef.current.scrollTop,
@@ -1077,17 +1251,17 @@ export default function InterfaceBuilderClient() {
   }, [canvasAreaRef, setIsPanning, setPanStartCoords]);
 
   useEffect(() => {
-    const handleGlobalMouseMove = (event: MouseEvent) => {
+    const handleGlobalMouseMoveForPanning = (event: MouseEvent) => {
       if (!isPanning || !panStartCoords || !canvasAreaRef.current) return;
 
       const dx = event.clientX - panStartCoords.x;
       const dy = event.clientY - panStartCoords.y;
 
-      canvasAreaRef.current.scrollLeft = panStartCoords.scrollLeft - (dx / zoomLevel);
-      canvasAreaRef.current.scrollTop = panStartCoords.scrollTop - (dy / zoomLevel);
+      canvasAreaRef.current.scrollLeft = panStartCoords.scrollLeft - dx;
+      canvasAreaRef.current.scrollTop = panStartCoords.scrollTop - dy;
     };
 
-    const handleGlobalMouseUp = () => {
+    const handleGlobalMouseUpForPanning = () => {
       if (isPanning) {
         setIsPanning(false);
         setPanStartCoords(null);
@@ -1096,20 +1270,20 @@ export default function InterfaceBuilderClient() {
     };
 
     if (isPanning) {
-      document.addEventListener('mousemove', handleGlobalMouseMove);
-      document.addEventListener('mouseup', handleGlobalMouseUp);
+      document.addEventListener('mousemove', handleGlobalMouseMoveForPanning);
+      document.addEventListener('mouseup', handleGlobalMouseUpForPanning);
     } else {
-      document.removeEventListener('mousemove', handleGlobalMouseMove);
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('mousemove', handleGlobalMouseMoveForPanning);
+      document.removeEventListener('mouseup', handleGlobalMouseUpForPanning);
       document.body.style.cursor = 'default';
     }
 
     return () => {
-      document.removeEventListener('mousemove', handleGlobalMouseMove);
-      document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.removeEventListener('mousemove', handleGlobalMouseMoveForPanning);
+      document.removeEventListener('mouseup', handleGlobalMouseUpForPanning);
       document.body.style.cursor = 'default';
     };
-  }, [isPanning, panStartCoords, zoomLevel, canvasAreaRef]);
+  }, [isPanning, panStartCoords, canvasAreaRef]); 
 
 
   const handleDeleteConnection = (connectionId: string) => {
@@ -1138,8 +1312,18 @@ export default function InterfaceBuilderClient() {
         nodeDataChanged = true;
       }
 
-      if (nodeDataChanged) {
-        return { ...node, data: { ...(node.data || {}), connectors: newConnectors }};
+      if (nodeDataChanged && node.data) {
+        const isNowInputConnected = Array.isArray(connections) ? connections.some(c => c.id !== connectionId && c.toNodeId === node.id) : false;
+        const isNowOutputConnected = Array.isArray(connections) ? connections.some(c => c.id !== connectionId && c.fromNodeId === node.id) : false;
+        return { 
+            ...node, 
+            data: { 
+                ...(node.data || {}), 
+                connectors: newConnectors,
+                inputConnected: isNowInputConnected,
+                outputConnected: isNowOutputConnected,
+            }
+        };
       }
       return node;
     }));
@@ -1165,11 +1349,9 @@ export default function InterfaceBuilderClient() {
   const handleZoomOut = () => setZoomLevel(prev => Math.max(MIN_ZOOM, prev - ZOOM_STEP));
 
   const handleToggleAiAssistantPanel = useCallback(() => {
-    setIsAiAssistantPanelOpen(prev => {
-        const nextState = !prev;
-        return nextState;
-    });
+    setIsAiAssistantPanelOpen(prevState => !prevState);
   }, []);
+
 
   const handleTogglePaletteCollapse = () => {
     if (palettePanelRef.current) {
@@ -1189,9 +1371,9 @@ export default function InterfaceBuilderClient() {
   const handleAutoLayout = () => {
     if (!currentWorkflow) return;
     const PADDING = 50;
-    const NODE_SPACING_X = AI_AGENT_NODE_WIDTH + 50;
-    const NODE_SPACING_Y = AI_AGENT_NODE_MIN_HEIGHT + AI_AGENT_CONNECTOR_AREA_HEIGHT + SPACING_BELOW_AI_NODE_CONNECTORS + 50;
-    const NODES_PER_ROW = Math.floor((canvasAreaRef.current?.offsetWidth || 800) / NODE_SPACING_X) || 1;
+    const NODE_SPACING_X = AI_AGENT_NODE_WIDTH + 50; 
+    const NODE_SPACING_Y = AI_AGENT_NODE_MIN_HEIGHT + AI_AGENT_CONNECTOR_AREA_HEIGHT + SPACING_BELOW_AI_NODE_CONNECTORS + 50; 
+    const NODES_PER_ROW = Math.floor((canvasAreaRef.current?.offsetWidth || 800) / NODE_SPACING_X) || 1; 
 
     setActiveNodes(prevNodes =>
         prevNodes.map((node, index) => {
@@ -1201,13 +1383,13 @@ export default function InterfaceBuilderClient() {
             if (node.type === 'CONNECTED_CHAT_MODEL' && node.data?.aiAgentNodeId) {
                 const parentAiNode = prevNodes.find(n => n.id === node.data.aiAgentNodeId);
                 if (parentAiNode && parentAiNode.position) {
-                    newX = parentAiNode.position.x + (AI_AGENT_NODE_WIDTH / 6) - (CONNECTED_MODEL_NODE_WIDTH / 2);
+                    newX = parentAiNode.position.x + (AI_AGENT_NODE_WIDTH / 6) - (CONNECTED_MODEL_NODE_WIDTH / 2); 
                     newY = parentAiNode.position.y + AI_AGENT_NODE_MIN_HEIGHT + AI_AGENT_CONNECTOR_AREA_HEIGHT + SPACING_BELOW_AI_NODE_CONNECTORS;
                 }
             } else if (node.type === 'COINGECKO_TOOL_DISPLAY_NODE' && node.data?.parentAiAgentId) {
                  const parentAiNode = prevNodes.find(n => n.id === node.data.parentAiAgentId);
                  if (parentAiNode && parentAiNode.position) {
-                    newX = parentAiNode.position.x + (AI_AGENT_NODE_WIDTH * 5/6) - (COINGECKO_TOOL_NODE_WIDTH / 2);
+                    newX = parentAiNode.position.x + (AI_AGENT_NODE_WIDTH * 5/6) - (COINGECKO_TOOL_NODE_WIDTH / 2); 
                     newY = parentAiNode.position.y + AI_AGENT_NODE_MIN_HEIGHT + AI_AGENT_CONNECTOR_AREA_HEIGHT + SPACING_BELOW_AI_NODE_CONNECTORS;
                 }
             }
@@ -1247,7 +1429,7 @@ export default function InterfaceBuilderClient() {
       return;
     }
 
-    setProcessingNodeId(aiAgentNode.id);
+    setProcessingNodeId(aiAgentNode.id); 
 
     const { selectedModelId, chatModelCredentialId, chatModelCredentialStatus, promptSource, systemPrompt } = aiAgentNode.data;
     if (!selectedModelId || !chatModelCredentialId) {
@@ -1264,14 +1446,22 @@ export default function InterfaceBuilderClient() {
     }
 
     const credential = getCredentialById(chatModelCredentialId);
-     if (!credential || (!credential.apiKey && !['ollama', 'googleai', 'google-vertex', 'aws-bedrock'].includes(credential.providerId))) {
-       setWorkflowChatMessages(prev => [...prev, { id: uuidv4(), text: `System: API Key not found or required for AI Agent "${aiAgentNode.name}".`, sender: 'system' }]);
+     if (!credential) {
+       setWorkflowChatMessages(prev => [...prev, { id: uuidv4(), text: `System: Credential not found for AI Agent "${aiAgentNode.name}".`, sender: 'system' }]);
        setIsWorkflowAiResponding(false);
        setProcessingNodeId(null);
        return;
     }
 
-    let agentSystemPromptText = "You are a helpful AI assistant.";
+    if (credential.providerId === 'openai' && !credential.apiKey) {
+        setWorkflowChatMessages(prev => [...prev, { id: uuidv4(), text: `System: OpenAI API Key not found in credential for AI Agent "${aiAgentNode.name}".`, sender: 'system' }]);
+        setIsWorkflowAiResponding(false);
+        setProcessingNodeId(null);
+        return;
+    }
+
+
+    let agentSystemPromptText = "You are a helpful AI assistant."; 
     if (promptSource === 'system-prompt' && systemPrompt) {
       agentSystemPromptText = systemPrompt;
     }
@@ -1280,9 +1470,9 @@ export default function InterfaceBuilderClient() {
       userInput,
       agentSystemPrompt: agentSystemPromptText,
       modelId: selectedModelId,
-      providerId: credential.providerId,
-      apiKey: credential.apiKey,
-      apiEndpoint: credential.endpoint,
+      providerId: credential.providerId, 
+      apiKey: credential.apiKey, 
+      apiEndpoint: credential.endpoint, 
     };
 
     try {
@@ -1297,7 +1487,7 @@ export default function InterfaceBuilderClient() {
       setWorkflowChatMessages(prev => [...prev, { id: uuidv4(), text: "System: An unexpected error occurred while contacting the AI.", sender: 'system' }]);
     } finally {
       setIsWorkflowAiResponding(false);
-      setProcessingNodeId(null);
+      setProcessingNodeId(null); 
     }
   };
 
@@ -1324,14 +1514,13 @@ export default function InterfaceBuilderClient() {
   };
 
   const handleImportWorkflow = (importedWorkflowData: Partial<Workflow>) => {
-    if (!importedWorkflowData.name || !Array.isArray(importedWorkflowData.nodes) || !Array.isArray(importedWorkflowData.connections)) {
+    if (!importedWorkflowData.name || !Array.isArray(importedWorkflowData.nodes) || importedWorkflowData.connections === undefined ) {
         toast({ title: "Import Error", description: "Invalid workflow file format. Missing name, nodes, or connections.", variant: "destructive" });
         return;
     }
 
-    const newWorkflowName = `Imported - ${importedWorkflowData.name.substring(0, 50)}`;
     const newWorkflow: Workflow = workflowStore.createNewWorkflow(
-        newWorkflowName,
+        `Imported - ${importedWorkflowData.name.substring(0, 50)}`,
         Array.isArray(importedWorkflowData.nodes) ? importedWorkflowData.nodes : [],
         Array.isArray(importedWorkflowData.connections) ? importedWorkflowData.connections : [],
         importedWorkflowData.zoomLevel || 1
@@ -1339,8 +1528,8 @@ export default function InterfaceBuilderClient() {
 
     if (newWorkflow) {
         setCurrentWorkflow(newWorkflow);
-        setActiveNodes(newWorkflow.nodes || []);
-        setConnections(Array.isArray(newWorkflow.connections) ? newWorkflow.connections : []);
+        setActiveNodes(newWorkflow.nodes || []); 
+        setConnections(Array.isArray(newWorkflow.connections) ? newWorkflow.connections : []); 
         setZoomLevel(newWorkflow.zoomLevel || 1);
         workflowStore.setActiveWorkflowId(newWorkflow.id);
         toast({ title: "Workflow Imported", description: `"${newWorkflow.name}" has been imported and is now active.` });
@@ -1406,7 +1595,7 @@ export default function InterfaceBuilderClient() {
     if (!nodeToDelete) return;
 
     let newNodes = activeNodes.filter(n => n.id !== nodeId);
-    let newConnections = Array.isArray(connections) ? connections.filter(
+    let newConnectionsValue = Array.isArray(connections) ? connections.filter(
       conn => conn.fromNodeId !== nodeId && conn.toNodeId !== nodeId
     ) : [];
 
@@ -1414,13 +1603,14 @@ export default function InterfaceBuilderClient() {
       if (nodeToDelete.data?.connectedChatModelNodeId) {
         newNodes = newNodes.filter(n => n.id !== nodeToDelete.data.connectedChatModelNodeId);
       }
-      if (nodeToDelete.data?.coingeckoToolNodeId) {
+      if (nodeToDelete.data?.coingeckoToolNodeId) { 
         newNodes = newNodes.filter(n => n.id !== nodeToDelete.data.coingeckoToolNodeId);
       }
     }
     else if (nodeToDelete.type === 'CONNECTED_CHAT_MODEL' || nodeToDelete.type === 'COINGECKO_TOOL_DISPLAY_NODE') {
-        if(nodeToDelete.data?.aiAgentNodeId || nodeToDelete.data?.parentAiAgentId){
-            const parentId = nodeToDelete.data.aiAgentNodeId || nodeToDelete.data.parentAiAgentId;
+        const parentIdKey = nodeToDelete.type === 'CONNECTED_CHAT_MODEL' ? 'aiAgentNodeId' : 'parentAiAgentId';
+        const parentId = nodeToDelete.data?.[parentIdKey];
+        if(parentId){
             newNodes = newNodes.map(n => {
                 if (n.id === parentId && n.type === 'AI_AGENT' && n.data) {
                     const updatedData = {...n.data};
@@ -1439,7 +1629,7 @@ export default function InterfaceBuilderClient() {
 
 
     setActiveNodes(newNodes);
-    setConnections(newConnections);
+    setConnections(newConnectionsValue);
     toast({ title: "Node Deleted", description: `Node "${nodeToDelete.name}" and its connections removed.`});
   };
 
@@ -1451,120 +1641,134 @@ export default function InterfaceBuilderClient() {
 
   const nodeToConfigureForAiAgentModal = editingNodeId ? activeNodes.find(n => n.id === editingNodeId && n.type === 'AI_AGENT') : null;
   const nodeToConfigureForTelegramModal = editingTelegramNodeId ? activeNodes.find(n => n.id === editingTelegramNodeId && n.type === 'TELEGRAM_TRIGGER') : null;
+  
   const agentNodeForGitHubConfig = agentNodeForToolConfig; 
   const existingGitHubTool = agentNodeForToolConfig?.data?.tools?.find(t => t.id === editingToolIdForAgent && t.type === 'GITHUB_API') as GitHubApiToolConfig | undefined;
 
 
   return (
     <div className="flex h-screen w-screen flex-col overflow-hidden">
-      <Header 
-        onOpenLoginModal={handleOpenLoginModal} 
-        onOpenAgentTemplatesModal={handleOpenAgentTemplatesModal}
+      <StartupChoiceModal
+        isOpen={isStartupChoiceModalOpen}
+        onChoice={handleStartupChoice}
+        onOpenChange={handleStartupModalOpenChange}
       />
-       <ResizablePanelGroup
-        direction="horizontal"
-        className="flex-grow border-t"
-        ref={mainPanelGroupRef}
-      >
-        <ResizablePanel
-            ref={palettePanelRef}
-            defaultSize={PALETTE_PANEL_DEFAULT_SIZE}
-            minSize={0} 
-            maxSize={40}
-            collapsible
-            collapsedSize={0} 
-            className="transition-all duration-300 ease-in-out bg-card"
-            order={1}
-        >
-           <ComponentsPalette onNodeSelect={handleNodeSelect} />
-        </ResizablePanel>
-        <ResizableHandle withHandle />
-        <ResizablePanel
-            minSize={30}
-            order={2}
-            className="flex flex-col" 
-        >
-            <CanvasArea
-              ref={canvasAreaRef}
-              workflowName={currentWorkflow?.name || ''}
-              onWorkflowNameChange={handleWorkflowNameChange}
-              onCreateNewWorkflow={handleCreateNewWorkflow}
-              onOpenMyWorkflows={handleOpenMyWorkflowsModal}
-              onExplicitSave={handleExplicitSave}
-              onOpenShareModal={handleOpenShareModal}
-              onImportFromUrl={handleImportFromUrl}
-              onImportFromFile={handleImportFromFile}
-              activeNodes={activeNodes}
-              connections={connections}
-              drawingLine={drawingLineState}
-              onNodeDragStart={handleNodeDragStart}
-              draggingNodeId={draggingState?.nodeId || null}
-              onNodeDoubleClick={handleNodeDoubleClick}
-              onNodeConfigureSection={handleNodeConfigureSection}
-              zoomLevel={zoomLevel}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-              onToggleMaximize={handleTogglePaletteCollapse}
-              onToggleWorkflowChatPanel={handleToggleWorkflowChatPanel}
-              isWorkflowChatPanelVisible={isWorkflowChatPanelVisible}
-              onToggleAiAssistantPanel={handleToggleAiAssistantPanel}
-              onRedo={handleRedo}
-              onAutoLayout={handleAutoLayout}
-              onStartLineDraw={handleStartLineDraw}
-              onConnectorMouseUp={handleConnectorMouseUp}
-              onCanvasMouseMove={handleCanvasMouseMove}
-              onCanvasMouseUp={handleCanvasMouseUp}
-              onDeleteConnection={handleDeleteConnection}
-              onAddNodeOnConnection={handleAddNodeOnConnection}
-              workflowChatMessages={workflowChatMessages}
-              onWorkflowChatSend={handleWorkflowChatSend}
-              isWorkflowAiResponding={isWorkflowAiResponding}
-              onCanvasMouseDown={handleCanvasMouseDown}
-              processingNodeId={processingNodeId}
-              onToggleNodeDisabled={handleToggleNodeDisabled}
-              onDeleteNode={handleDeleteNode}
-              onMoreNodeOptions={handleMoreNodeOptions}
-              className="flex-grow" 
-            />
-        </ResizablePanel>
-         {isAiAssistantPanelOpen && (
-          <>
+
+      {!isStartupChoiceModalOpen && currentView === 'builder' && (
+        <>
+          <Header
+            onOpenLoginModal={handleOpenLoginModal}
+            onOpenAgentTemplatesModal={handleOpenAgentTemplatesModal}
+          />
+           <ResizablePanelGroup
+            direction="horizontal"
+            className="flex-grow border-t"
+            ref={mainPanelGroupRef}
+          >
+            <ResizablePanel
+                ref={palettePanelRef}
+                defaultSize={PALETTE_PANEL_DEFAULT_SIZE}
+                minSize={0} 
+                maxSize={40}
+                collapsible
+                collapsedSize={0}
+                className="transition-all duration-300 ease-in-out bg-card"
+                order={1}
+            >
+               <ComponentsPalette onNodeSelect={handleNodeSelect} />
+            </ResizablePanel>
             <ResizableHandle withHandle />
             <ResizablePanel
-              ref={assistantPanelRef}
-              order={3}
-              collapsible
-              collapsedSize={0}
-              defaultSize={isAiAssistantPanelOpen ? ASSISTANT_PANEL_DEFAULT_SIZE : 0}
-              minSize={0}
-              maxSize={40}
-              onCollapse={() => {
-                if (isAiAssistantPanelOpen) setIsAiAssistantPanelOpen(false);
-              }}
-              onExpand={() => {
-                if (!isAiAssistantPanelOpen) setIsAiAssistantPanelOpen(true);
-              }}
-              className="transition-all duration-300 ease-in-out"
+                minSize={30}
+                order={2}
+                className="flex flex-col" 
             >
-             <AiAssistantPanel
-                onClose={handleToggleAiAssistantPanel}
-                messages={assistantMessages}
-                onSendMessage={handleAssistantChatSend}
-                isResponding={isAssistantResponding}
-                userName="User"
-              />
+                <CanvasArea
+                  ref={canvasAreaRef}
+                  workflowName={currentWorkflow?.name || ''}
+                  onWorkflowNameChange={handleWorkflowNameChange}
+                  onCreateNewWorkflow={handleCreateNewWorkflow}
+                  onOpenMyWorkflows={handleOpenMyWorkflowsModal}
+                  onExplicitSave={handleExplicitSave}
+                  onOpenShareModal={handleOpenShareModal}
+                  onImportFromUrl={handleImportFromUrl}
+                  onImportFromFile={handleImportFromFile}
+                  activeNodes={activeNodes}
+                  connections={connections}
+                  drawingLine={drawingLineState}
+                  onNodeDragStart={handleNodeDragStart}
+                  draggingNodeId={draggingState?.nodeId || null}
+                  onNodeDoubleClick={handleNodeDoubleClick}
+                  onNodeConfigureSection={handleNodeConfigureSection}
+                  zoomLevel={zoomLevel}
+                  onZoomIn={handleZoomIn}
+                  onZoomOut={handleZoomOut}
+                  onToggleMaximize={handleTogglePaletteCollapse}
+                  onToggleWorkflowChatPanel={handleToggleWorkflowChatPanel}
+                  isWorkflowChatPanelVisible={isWorkflowChatPanelVisible}
+                  onToggleAiAssistantPanel={handleToggleAiAssistantPanel}
+                  onRedo={handleRedo}
+                  onAutoLayout={handleAutoLayout}
+                  onStartLineDraw={handleStartLineDraw}
+                  onConnectorMouseUp={handleConnectorMouseUp}
+                  onCanvasMouseMove={handleCanvasMouseMove}
+                  onCanvasMouseUp={handleCanvasMouseUp}
+                  onDeleteConnection={handleDeleteConnection}
+                  onAddNodeOnConnection={handleAddNodeOnConnection}
+                  workflowChatMessages={workflowChatMessages}
+                  onWorkflowChatSend={handleWorkflowChatSend}
+                  isWorkflowAiResponding={isWorkflowAiResponding}
+                  onCanvasMouseDown={handleCanvasMouseDown}
+                  processingNodeId={processingNodeId}
+                  onToggleNodeDisabled={handleToggleNodeDisabled}
+                  onDeleteNode={handleDeleteNode}
+                  onMoreNodeOptions={handleMoreNodeOptions}
+                  className="flex-grow" 
+                />
             </ResizablePanel>
-          </>
-        )}
-      </ResizablePanelGroup>
+            {isAiAssistantPanelOpen && (
+              <>
+                <ResizableHandle withHandle />
+                <ResizablePanel
+                  ref={assistantPanelRef}
+                  order={3}
+                  collapsible
+                  collapsedSize={0}
+                  defaultSize={ASSISTANT_PANEL_DEFAULT_SIZE}
+                  minSize={0} 
+                  maxSize={40}
+                  onCollapse={() => setIsAiAssistantPanelOpen(false)}
+                  onExpand={() => setIsAiAssistantPanelOpen(true)}
+                  className="transition-all duration-300 ease-in-out"
+                >
+                 <AiAssistantPanel
+                    onClose={() => setIsAiAssistantPanelOpen(false)}
+                    messages={assistantMessages}
+                    onSendMessage={handleAssistantChatSend}
+                    isResponding={isAssistantResponding}
+                    userName="User"
+                  />
+                </ResizablePanel>
+              </>
+            )}
+          </ResizablePanelGroup>
+        </>
+      )}
 
-      <WorkflowNameModal
-        isOpen={isWorkflowNameModalOpen}
-        onOpenChange={setIsWorkflowNameModalOpen}
-        onSave={handleSaveWorkflowName}
-        initialName={currentWorkflow?.name || (isCreatingNewWorkflow ? 'My New Workflow' : '')}
-        isCreatingNew={isCreatingNewWorkflow}
-      />
+      {!isStartupChoiceModalOpen && currentView === 'landingCreator' && (
+        <LandingPageGenerator />
+      )}
+
+
+      {currentView === 'builder' && (
+        <WorkflowNameModal
+            isOpen={isWorkflowNameModalOpen && !isStartupChoiceModalOpen}
+            onOpenChange={setIsWorkflowNameModalOpen}
+            onSave={handleSaveWorkflowName}
+            initialName={currentWorkflow?.name || ''}
+            isCreatingNew={isCreatingNewWorkflow}
+        />
+      )}
 
       <ShareWorkflowModal
         isOpen={isShareModalOpen}
@@ -1641,10 +1845,10 @@ export default function InterfaceBuilderClient() {
           onCredentialSelected={handleCredentialSelectedFromManager}
           currentConfiguredProviderId={
             configuringToolDetails?.providerId || 
-            configuringChatModelForNode?.data?.selectedProviderId
+            configuringChatModelForNode?.data?.selectedProviderId 
           }
-          currentConfiguredModelId={configuringChatModelForNode?.data?.selectedModelId}
-          currentConfiguredCredentialId={
+          currentConfiguredModelId={configuringChatModelForNode?.data?.selectedModelId} 
+          currentConfiguredCredentialId={ 
             configuringChatModelForNode?.data?.chatModelCredentialId ||
             (configuringToolDetails?.existingToolId && activeNodes.find(n => n.id === configuringToolDetails.agentNodeId)?.data?.tools?.find((t: AnyToolConfig) => t.id === configuringToolDetails.existingToolId)?.credentialId)
           }
@@ -1655,7 +1859,7 @@ export default function InterfaceBuilderClient() {
         isOpen={isLoginModalOpen}
         onOpenChange={setIsLoginModalOpen}
       />
-      
+
       <AgentTemplatesModal
         isOpen={isAgentTemplatesModalOpen}
         onOpenChange={setIsAgentTemplatesModalOpen}
@@ -1665,3 +1869,4 @@ export default function InterfaceBuilderClient() {
   );
 }
 
+    

@@ -1,8 +1,12 @@
+
 // @ts-nocheck
 // TODO: Fix TS errors
 "use server";
 
 import { generateUiCode, type GenerateUiCodeInput } from '@/ai/flows/generate-ui-code';
+import { generateLandingPageCode, type GenerateLandingPageCodeOutput } from '@/ai/flows/generate-landing-page-code';
+import type { GenerateLandingPageCodeInput as ILandingPageInput } from '@/lib/types';
+
 
 export async function handleGenerateCodeAction(description: string): Promise<{ code: string | null; error: string | null }> {
   if (!description || description.trim() === "") {
@@ -24,6 +28,31 @@ export async function handleGenerateCodeAction(description: string): Promise<{ c
   } catch (error) {
     console.error("Error generating UI code:", error);
     let errorMessage = "Failed to generate code due to an unexpected error.";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'string') {
+      errorMessage = error;
+    }
+    return { code: null, error: errorMessage };
+  }
+}
+
+export async function handleGenerateLandingPageCodeAction(
+  input: ILandingPageInput
+): Promise<{ code: string | null; error: string | null }> {
+  if (!input.description || input.description.trim() === "") {
+    return { code: null, error: "Landing page description cannot be empty." };
+  }
+
+  try {
+    const result: GenerateLandingPageCodeOutput = await generateLandingPageCode(input);
+    if (result && result.code) {
+      return { code: result.code, error: null };
+    }
+    return { code: null, error: "AI did not return landing page code." };
+  } catch (error: any) {
+    console.error("Error generating landing page code:", error);
+    let errorMessage = "Failed to generate landing page code due to an unexpected error.";
     if (error instanceof Error) {
       errorMessage = error.message;
     } else if (typeof error === 'string') {

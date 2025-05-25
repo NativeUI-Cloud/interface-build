@@ -1,3 +1,4 @@
+
 {
   "$schema": "https://ui.shadcn.com/schema.json",
   "style": "default",
@@ -15,7 +16,8 @@
     "utils": "@/lib/utils",
     "ui": "@/components/ui",
     "lib": "@/lib",
-    "hooks": "@/hooks"
+    "hooks": "@/hooks",
+    "magicui": "@/components/magicui"
   },
   "iconLibrary": "lucide"
 }
