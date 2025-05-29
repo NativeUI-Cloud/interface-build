@@ -4,8 +4,11 @@
 import { cn } from "@/lib/utils";
 import { Marquee } from "@/components/magicui/marquee";
 import Image from "next/image";
+import { v4 as uuidv4 } from 'uuid'; // Import uuid
 
+// Interface for a single review, now with an ID
 export interface Review {
+  id: string; // Unique ID for each review
   name: string;
   username: string;
   body: string;
@@ -14,38 +17,45 @@ export interface Review {
   cardTextColor?: string;
 }
 
+// Default reviews with unique IDs
 export const defaultReviews: Review[] = [
   {
+    id: uuidv4(),
     name: "Jack",
     username: "@jack",
     body: "I've never seen anything like this before. It's amazing. I love it.",
     img: "https://avatar.vercel.sh/jack",
   },
   {
+    id: uuidv4(),
     name: "Jill",
     username: "@jill",
     body: "I don't know what to say. I'm speechless. This is amazing.",
     img: "https://avatar.vercel.sh/jill",
   },
   {
+    id: uuidv4(),
     name: "John",
     username: "@john",
     body: "I'm at a loss for words. This is amazing. I love it.",
     img: "https://avatar.vercel.sh/john",
   },
   {
+    id: uuidv4(),
     name: "Jane",
     username: "@jane",
     body: "I'm at a loss for words. This is amazing. I love it.",
     img: "https://avatar.vercel.sh/jane",
   },
   {
+    id: uuidv4(),
     name: "Jenny",
     username: "@jenny",
     body: "I'm at a loss for words. This is amazing. I love it.",
     img: "https://avatar.vercel.sh/jenny",
   },
   {
+    id: uuidv4(),
     name: "James",
     username: "@james",
     body: "I'm at a loss for words. This is amazing. I love it.",
@@ -73,14 +83,8 @@ const ReviewCard = ({
     <figure
       className={cn(
         "relative h-full cursor-pointer overflow-hidden rounded-xl border p-4",
-        // Responsive width for the card:
-        // It will try to be w-full but capped at 200px on extra small screens,
-        // then 220px on sm, max-w-xs (approx 288px) on md, and up to w-64 (256px) on lg screens.
-        // The `w-full` allows it to shrink if its container (the marquee track) is smaller.
         "w-full max-w-[200px] sm:max-w-[220px] md:max-w-xs lg:w-64",
-        // light styles
         !cardBackgroundColor && "border-gray-950/[.1] bg-gray-950/[.01] hover:bg-gray-950/[.05]",
-        // dark styles
         !cardBackgroundColor && "dark:border-gray-50/[.1] dark:bg-gray-50/[.10] dark:hover:bg-gray-50/[.15]",
       )}
       style={cardStyle}
@@ -100,7 +104,7 @@ const ReviewCard = ({
 };
 
 interface MarqueeDemoProps {
-  reviews: Review[];
+  reviews: Review[]; // Changed to non-optional
 }
 
 export default function MarqueeDemo({ reviews }: MarqueeDemoProps) {
@@ -114,14 +118,14 @@ export default function MarqueeDemo({ reviews }: MarqueeDemoProps) {
   return (
     <div className="relative flex h-full w-full flex-col items-center justify-center overflow-hidden py-4 bg-background">
       <Marquee pauseOnHover className="[--duration:20s]">
-        {firstRow.map((review, index) => (
-          <ReviewCard key={review.username + index} {...review} />
+        {firstRow.map((review) => (
+          <ReviewCard key={review.id} {...review} />
         ))}
       </Marquee>
       {secondRow.length > 0 && (
         <Marquee reverse pauseOnHover className="[--duration:20s] mt-4">
-          {secondRow.map((review, index) => (
-            <ReviewCard key={review.username + index + '-second'} {...review} />
+          {secondRow.map((review) => (
+            <ReviewCard key={review.id} {...review} />
           ))}
         </Marquee>
       )}

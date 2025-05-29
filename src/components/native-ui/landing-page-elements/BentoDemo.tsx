@@ -16,22 +16,27 @@ import type { BentoFeature } from '@/lib/types';
 
 const files = [
   {
+    id: uuidv4(),
     name: "bitcoin.pdf",
     body: "Bitcoin is a cryptocurrency invented in 2008 by an unknown person or group of people using the name Satoshi Nakamoto.",
   },
   {
+    id: uuidv4(),
     name: "finances.xlsx",
     body: "A spreadsheet or worksheet is a file made of rows and columns that help sort data, arrange data easily, and calculate numerical data.",
   },
   {
+    id: uuidv4(),
     name: "logo.svg",
     body: "Scalable Vector Graphics is an Extensible Markup Language-based vector image format for two-dimensional graphics with support for interactivity and animation.",
   },
   {
+    id: uuidv4(),
     name: "keys.gpg",
     body: "GPG keys are used to encrypt and decrypt email, files, directories, and whole disk partitions and to authenticate messages.",
   },
   {
+    id: uuidv4(),
     name: "seed.txt",
     body: "A seed phrase, seed recovery phrase or backup seed phrase is a list of words which store all the information needed to recover Bitcoin funds on-chain.",
   },
@@ -40,7 +45,7 @@ const files = [
 export const defaultBentoFeatures: BentoFeature[] = [
   {
     id: uuidv4(),
-    Icon: FileText, // Replaced FileTextIcon
+    Icon: FileText,
     name: "Save your files",
     description: "We automatically save your files as you type.",
     href: "#",
@@ -51,9 +56,9 @@ export const defaultBentoFeatures: BentoFeature[] = [
         pauseOnHover
         className="absolute top-10 [--duration:20s] [mask-image:linear-gradient(to_top,transparent_40%,#000_100%)] "
       >
-        {files.map((f, idx) => (
+        {files.map((f) => (
           <figure
-            key={idx}
+            key={f.id} // Changed from idx to f.id
             className={cn(
               "relative w-32 cursor-pointer overflow-hidden rounded-xl border p-4",
               "border-gray-950/[.1] bg-gray-950/[.01] hover:bg-gray-950/[.05]",
@@ -100,7 +105,7 @@ export const defaultBentoFeatures: BentoFeature[] = [
   },
   {
     id: uuidv4(),
-    Icon: CalendarDays, // Replaced CalendarIcon
+    Icon: CalendarDays,
     name: "Calendar",
     description: "Use the calendar to filter your files by date.",
     className: "col-span-3 lg:col-span-1",
@@ -123,7 +128,7 @@ interface BentoDemoProps {
 export function BentoDemo({ features = defaultBentoFeatures }: BentoDemoProps) {
   return (
     <BentoGrid>
-      {features.map((feature) => ( // Removed idx, using feature.id (added to BentoFeature type)
+      {features.map((feature) => (
         <BentoCard key={feature.id} {...feature} />
       ))}
     </BentoGrid>
@@ -131,3 +136,4 @@ export function BentoDemo({ features = defaultBentoFeatures }: BentoDemoProps) {
 }
 
 export default BentoDemo;
+

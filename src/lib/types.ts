@@ -72,7 +72,7 @@ export interface EtherscanApiToolConfig extends ToolConfigBase {
 export interface TheGraphToolConfig extends ToolConfigBase {
   type: 'THE_GRAPH_API';
   subgraphQueryUrl: string;
-  credentialId?: string;
+  credentialId?: string; 
 }
 
 export interface ShopifyAdminToolConfig extends ToolConfigBase {
@@ -83,7 +83,7 @@ export interface ShopifyAdminToolConfig extends ToolConfigBase {
 
 export interface PubMedSearchToolConfig extends ToolConfigBase {
   type: 'PUBMED_SEARCH_TOOL';
-  credentialId?: string;
+  credentialId?: string; 
 }
 
 
@@ -240,27 +240,47 @@ export interface HeroVideoData {
 }
 
 export interface BentoFeature {
-  id: string; // Added for key prop and editing
+  id: string; 
   Icon: React.ElementType;
   name: string;
   description: string;
   href: string;
   cta: string;
   className: string;
-  background?: React.ReactNode; // This is tricky to serialize and edit generically
-  // For a more editable structure, we might need to define background types
-  // e.g., background: { type: 'marquee', items: File[] } | { type: 'animatedList' } | { type: 'calendar' }
+  background?: React.ReactNode; 
 }
 
 export interface BentoData {
   features: BentoFeature[];
 }
 
+// For Animated List (Magic UI)
+export interface AnimatedListItem {
+  id: string;
+  name: string;
+  description: string;
+  icon: string; // Emoji or character
+  color: string; // Hex color
+  time: string;
+}
+
+export interface AnimatedListData {
+  items: AnimatedListItem[];
+}
+
+export interface WebElementDefinition {
+  name: string;
+  type: string;
+  previewComponent: React.ReactNode;
+  initialData: any;
+  icon?: React.ElementType;
+  category: string; // New field for categorization
+}
 
 export interface CanvasElement {
   id: string;
   name: string;
-  type: string; // e.g., 'MarqueeTestimonials', 'HeroSection', 'HeroVideoDialog', 'BentoGrid'
+  type: string; 
   data: any; 
 }
 

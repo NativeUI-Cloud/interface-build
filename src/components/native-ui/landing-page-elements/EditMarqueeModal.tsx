@@ -16,7 +16,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { PlusCircle, Trash2, UserCircle, ImageIcon, Palette, FileText, UploadCloud, Link as LinkIcon, Info } from 'lucide-react';
-import type { Review } from './MarqueeDemo';
+import type { Review } from './MarqueeDemo'; // Import the Review type
 import { v4 as uuidv4 } from 'uuid';
 import Image from "next/image";
 
@@ -39,8 +39,13 @@ export default function EditMarqueeModal({
 
   useEffect(() => {
     if (isOpen) {
-      setEditableReviews(JSON.parse(JSON.stringify(initialReviews || [])));
-      fileInputRefs.current = (initialReviews || []).map(() => null);
+      // Ensure each review has an ID when modal opens
+      const reviewsWithIds = (initialReviews || []).map(review => ({
+        ...review,
+        id: review.id || uuidv4(), // Assign an ID if it doesn't have one
+      }));
+      setEditableReviews(JSON.parse(JSON.stringify(reviewsWithIds)));
+      fileInputRefs.current = reviewsWithIds.map(() => null);
     }
   }, [isOpen, initialReviews]);
 
@@ -49,12 +54,12 @@ export default function EditMarqueeModal({
     if (newReviews[index]) {
       if ((field === 'cardBackgroundColor' && (value === '#ffffff' || !value)) ||
           (field === 'cardTextColor' && (value === '#000000' || !value))) {
-        (newReviews[index] as any)[field] = undefined; 
+        (newReviews[index] as any)[field] = undefined;
       } else {
         (newReviews[index] as any)[field] = value;
       }
       setEditableReviews(newReviews);
-      onUpdate(newReviews); 
+      onUpdate(newReviews);
     }
   };
 
@@ -77,6 +82,7 @@ export default function EditMarqueeModal({
     const newReviewList = [
       ...editableReviews,
       {
+        id: uuidv4(), // Assign a unique ID to the new review
         name: 'New Reviewer',
         username: `@new_${uuidv4().substring(0, 7)}`,
         body: 'Awesome product!',
@@ -86,15 +92,15 @@ export default function EditMarqueeModal({
       },
     ];
     setEditableReviews(newReviewList);
-    fileInputRefs.current.push(null); 
-    onUpdate(newReviewList); 
+    fileInputRefs.current.push(null);
+    onUpdate(newReviewList);
   };
 
   const handleRemoveReview = (indexToRemove: number) => {
     const newReviewList = editableReviews.filter((_, index) => index !== indexToRemove);
     setEditableReviews(newReviewList);
-    fileInputRefs.current.splice(indexToRemove, 1); 
-    onUpdate(newReviewList); 
+    fileInputRefs.current.splice(indexToRemove, 1);
+    onUpdate(newReviewList);
   };
 
   const handleCloseModal = () => {
@@ -111,10 +117,10 @@ export default function EditMarqueeModal({
           <DialogDescription>Modify the content and appearance of the reviews. Changes are reflected live on the canvas.</DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="flex-grow min-h-0"> {/* min-h-0 is critical here for flex children */}
+        <ScrollArea className="flex-grow min-h-0">
           <div className="space-y-6 p-6">
             {editableReviews.map((review, index) => (
-              <div key={(review as any).id || review.username + index} className="p-4 border rounded-lg shadow-sm bg-background/70 space-y-3 relative">
+              <div key={review.id} className="p-4 border rounded-lg shadow-sm bg-background/70 space-y-3 relative">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="text-md font-semibold text-foreground">Review #{index + 1}</h3>
                   <Button
@@ -127,7 +133,7 @@ export default function EditMarqueeModal({
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1">
                         <Label htmlFor={`name-${index}`} className="flex items-center text-sm"><UserCircle className="mr-2 h-4 w-4 text-muted-foreground"/> Name</Label>
@@ -161,23 +167,23 @@ export default function EditMarqueeModal({
                     rows={3}
                   />
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label className="flex items-center text-sm"><ImageIcon className="mr-2 h-4 w-4 text-muted-foreground"/> Avatar Image</Label>
                   <div className="flex items-center gap-3 p-3 border rounded-md bg-card">
                     {review.img ? (
-                      <Image 
-                        src={review.img} 
+                      <Image
+                        src={review.img}
                         alt={`Avatar of ${review.name}`}
-                        width={48} 
-                        height={48} 
+                        width={48}
+                        height={48}
                         className="rounded-full object-cover border"
                         data-ai-hint="user avatar"
                         onError={(e) => {
                           const target = e.target as HTMLImageElement;
-                          target.style.display = 'none'; 
+                          target.style.display = 'none';
                           const parent = target.parentElement;
-                          if (parent && !parent.querySelector('.avatar-placeholder')) { 
+                          if (parent && !parent.querySelector('.avatar-placeholder')) {
                             const placeholder = document.createElement('div');
                             placeholder.className = 'avatar-placeholder w-12 h-12 rounded-full bg-muted flex items-center justify-center text-muted-foreground text-xs';
                             placeholder.innerText = review.name?.[0]?.toUpperCase() || '?';
@@ -227,7 +233,7 @@ export default function EditMarqueeModal({
                         <Input
                             id={`cardBgColor-${index}`}
                             type="color"
-                            value={review.cardBackgroundColor || '#ffffff'} 
+                            value={review.cardBackgroundColor || '#ffffff'}
                             onChange={(e) => handleReviewChange(index, 'cardBackgroundColor', e.target.value)}
                             className="bg-card w-full h-10 p-1"
                         />
@@ -237,7 +243,7 @@ export default function EditMarqueeModal({
                         <Input
                             id={`cardTextColor-${index}`}
                             type="color"
-                            value={review.cardTextColor || '#000000'} 
+                            value={review.cardTextColor || '#000000'}
                             onChange={(e) => handleReviewChange(index, 'cardTextColor', e.target.value)}
                             className="bg-card w-full h-10 p-1"
                         />
@@ -245,7 +251,7 @@ export default function EditMarqueeModal({
                 </div>
                  { (review.cardBackgroundColor || review.cardTextColor) &&
                     <Button variant="outline" size="sm" className="mt-2" onClick={() => {
-                        handleReviewChange(index, 'cardBackgroundColor', undefined); 
+                        handleReviewChange(index, 'cardBackgroundColor', undefined);
                         handleReviewChange(index, 'cardTextColor', undefined);
                     }}>Reset Card Colors</Button>
                 }
@@ -256,7 +262,7 @@ export default function EditMarqueeModal({
              )}
           </div>
         </ScrollArea>
-        
+
         <div className="px-6 py-4 border-t bg-muted/30 flex-shrink-0">
             <Button variant="outline" onClick={handleAddReview} size="sm">
                 <PlusCircle className="mr-2 h-4 w-4" /> Add Review
@@ -270,4 +276,3 @@ export default function EditMarqueeModal({
     </Dialog>
   );
 }
-
