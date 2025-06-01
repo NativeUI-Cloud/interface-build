@@ -262,12 +262,12 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
   return (
     <div className={cn("flex h-full flex-col bg-card text-card-foreground", className)} {...props}>
       {/* Top Controls Bar */}
-      <div className="flex items-center justify-between p-3 border-b border-border flex-shrink-0">
+      <div className="flex items-center justify-between p-2 border-b border-border flex-shrink-0">
         <div className="flex items-center gap-2">
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9" onClick={onCreateNewWorkflow} aria-label="New Workflow">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={onCreateNewWorkflow} aria-label="New Workflow">
                   <FilePlus2 className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -279,7 +279,7 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="outline" size="icon" className="h-9 w-9" onClick={onOpenMyWorkflows} aria-label="Open Workflows">
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={onOpenMyWorkflows} aria-label="Open Workflows">
                   <FolderOpen className="h-4 w-4" />
                 </Button>
               </TooltipTrigger>
@@ -293,35 +293,36 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
             onChange={handleNameInputChange}
             onBlur={handleNameInputBlur}
             onKeyPress={handleNameInputKeyPress}
-            className="text-lg font-semibold border-transparent focus-visible:border-input h-9 w-auto bg-card text-card-foreground"
+            className="text-lg font-semibold border-transparent focus-visible:border-input h-8 w-auto bg-card text-card-foreground"
             aria-label="Workflow Title"
             placeholder="Workflow Name"
           />
         </div>
         <div className="absolute left-1/2 -translate-x-1/2">
           <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as 'editor' | 'executions')}>
-            <TabsList className="bg-muted">
-              <TabsTrigger value="editor">Editor</TabsTrigger>
-              <TabsTrigger value="executions">Executions</TabsTrigger>
+            <TabsList className="bg-muted h-8">
+              <TabsTrigger value="editor" className="text-xs px-2 py-1 h-full">Editor</TabsTrigger>
+              <TabsTrigger value="executions" className="text-xs px-2 py-1 h-full">Executions</TabsTrigger>
             </TabsList>
           </Tabs>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="workflow-status" className="text-sm text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
+            <Label htmlFor="workflow-status" className="text-xs text-muted-foreground">
               {workflowStatusActive ? 'Active' : 'Inactive'}
             </Label>
             <Switch
               id="workflow-status"
               checked={workflowStatusActive}
               onCheckedChange={(checked) => { setWorkflowStatusActive(checked); console.log('Workflow status changed to:', checked); }}
+              className="h-5 w-9 data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-slate-300 [&>span]:h-4 [&>span]:w-4 [&>span[data-state=checked]]:translate-x-4 [&>span[data-state=unchecked]]:translate-x-0.5"
             />
           </div>
-          <Button variant="outline" size="sm" onClick={onOpenShareModal}>
-            <Users className="mr-1.5 h-4 w-4" />
+          <Button variant="outline" size="sm" onClick={onOpenShareModal} className="h-8 text-xs">
+            <Users className="mr-1.5 h-3.5 w-3.5" />
             Share
           </Button>
-          <Button variant="default" size="sm" onClick={onExplicitSave}>Save</Button>
+          <Button variant="default" size="sm" onClick={onExplicitSave} className="h-8 text-xs">Save</Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="icon" className="h-8 w-8">
@@ -590,18 +591,18 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
       {/* Bottom Toolbar */}
       <div className="flex items-center justify-between p-1.5 border-t border-border bg-card flex-shrink-0">
         <div className="flex items-center gap-0.5">
-          <Button variant="ghost" size="icon" aria-label="Close Workflow Chat Panel" onClick={onToggleWorkflowChatPanel}><X className="h-5 w-5 text-muted-foreground" /></Button>
-          <Button variant="ghost" size="icon" aria-label="Toggle Maximize Palette" onClick={onToggleMaximize}><Maximize2 className="h-5 w-5 text-muted-foreground" /></Button>
-          <Button variant="ghost" size="icon" aria-label="Zoom In" onClick={onZoomIn}><ZoomIn className="h-5 w-5 text-muted-foreground" /></Button>
-          <Button variant="ghost" size="icon" aria-label="Zoom Out" onClick={onZoomOut}><ZoomOut className="h-5 w-5 text-muted-foreground" /></Button>
-          <Button variant="ghost" size="icon" aria-label="Redo" onClick={onRedo}><RotateCw className="h-5 w-5 text-muted-foreground" /></Button>
-          <Button variant="ghost" size="icon" aria-label="Auto-layout" onClick={onAutoLayout}><Sparkles className="h-5 w-5 text-muted-foreground" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Close Workflow Chat Panel" onClick={onToggleWorkflowChatPanel} className="h-9 w-9"><X className="h-5 w-5 text-muted-foreground" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Toggle Maximize Palette" onClick={onToggleMaximize} className="h-9 w-9"><Maximize2 className="h-5 w-5 text-muted-foreground" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Zoom In" onClick={onZoomIn} className="h-9 w-9"><ZoomIn className="h-5 w-5 text-muted-foreground" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Zoom Out" onClick={onZoomOut} className="h-9 w-9"><ZoomOut className="h-5 w-5 text-muted-foreground" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Redo" onClick={onRedo} className="h-9 w-9"><RotateCw className="h-5 w-5 text-muted-foreground" /></Button>
+          <Button variant="ghost" size="icon" aria-label="Auto-layout" onClick={onAutoLayout} className="h-9 w-9"><Sparkles className="h-5 w-5 text-muted-foreground" /></Button>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="default" size="sm" onClick={handleTestWorkflowClick}>
+          <Button variant="default" size="sm" onClick={handleTestWorkflowClick} className="h-8 text-xs">
             <FlaskConical className="mr-1.5 h-4 w-4" /> Test workflow
           </Button>
-          <Button variant="outline" size="sm" onClick={onToggleWorkflowChatPanel}>
+          <Button variant="outline" size="sm" onClick={onToggleWorkflowChatPanel} className="h-8 text-xs">
             {isWorkflowChatPanelVisible ? <MessageSquareOff className="mr-1.5 h-4 w-4" /> : <MessageSquare className="mr-1.5 h-4" />}
             {isWorkflowChatPanelVisible ? "Hide chat" : "Show chat"}
           </Button>
@@ -613,7 +614,7 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
 
       {/* Workflow Chat Panel */}
       {isWorkflowChatPanelVisible && (
-        <div className="bg-card text-card-foreground border-t border-border p-4 flex flex-col h-[250px] flex-shrink-0">
+        <div className="bg-card text-card-foreground border-t border-border p-4 flex flex-col h-[200px] flex-shrink-0">
           <div className="flex items-center justify-between mb-2 flex-shrink-0">
             <div className="flex items-center gap-2">
               <span className="font-semibold text-foreground">Workflow Chat</span>
@@ -651,13 +652,13 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
             <Input
               type="text"
               placeholder="Type a message for the workflow..."
-              className="flex-grow bg-input border-border placeholder-muted-foreground focus:ring-primary focus:border-primary text-foreground"
+              className="flex-grow bg-input border-border placeholder-muted-foreground focus:ring-primary focus:border-primary text-foreground h-9"
               value={workflowChatInput}
               onChange={(e) => setWorkflowChatInput(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleLocalWorkflowChatSend()}
               disabled={isWorkflowAiResponding}
             />
-            <Button variant="default" size="icon" onClick={handleLocalWorkflowChatSend} className="bg-primary hover:bg-primary/90" disabled={isWorkflowAiResponding}>
+            <Button variant="default" size="icon" onClick={handleLocalWorkflowChatSend} className="bg-primary hover:bg-primary/90 h-9 w-9" disabled={isWorkflowAiResponding}>
               {isWorkflowAiResponding ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
               <span className="sr-only">Send message</span>
             </Button>

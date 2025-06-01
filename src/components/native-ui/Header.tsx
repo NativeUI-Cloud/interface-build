@@ -11,7 +11,7 @@ interface HeaderProps {
 
 export default function Header({ onOpenLoginModal, onOpenAgentTemplatesModal }: HeaderProps) {
   return (
-    <header className="flex h-16 items-center justify-between border-b bg-card px-4 md:px-6 shrink-0">
+    <header className="flex h-14 items-center justify-between border-b bg-card px-4 md:px-6 shrink-0">
       <div className="flex items-center gap-2">
         <ShapesIcon className="h-7 w-7 text-primary" />
         <h1 className="text-xl font-semibold text-foreground">
@@ -22,7 +22,7 @@ export default function Header({ onOpenLoginModal, onOpenAgentTemplatesModal }: 
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <Button variant="outline" size="icon" onClick={onOpenAgentTemplatesModal}>
+              <Button variant="outline" size="icon" onClick={onOpenAgentTemplatesModal} className="h-9 w-9">
                 <LayoutGrid className="h-5 w-5" />
               </Button>
             </TooltipTrigger>
@@ -31,7 +31,7 @@ export default function Header({ onOpenLoginModal, onOpenAgentTemplatesModal }: 
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
-        <Button variant="outline" onClick={onOpenLoginModal}>
+        <Button variant="outline" onClick={onOpenLoginModal} size="sm" className="h-9">
           <LogInIcon className="mr-2 h-4 w-4" />
           Login / Register
         </Button>
@@ -40,3 +40,4 @@ export default function Header({ onOpenLoginModal, onOpenAgentTemplatesModal }: 
     </header>
   );
 }
+

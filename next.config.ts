@@ -29,6 +29,17 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'placehold.co',
+        port: '',
+        pathname: '/**',
+      },
+    ],
+  },
+  experimental: {
+    allowedDevOrigins: [
+      '6000-firebase-studio-1746808073821.cluster-c23mj7ubf5fxwq6nrbev4ugaxa.cloudworkstations.dev',
     ],
   },
 };

@@ -1,25 +1,24 @@
+
 // src/app/project/[projectId]/page.tsx
 'use client';
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import type { CanvasRow, CanvasElement, HeroVideoData, BentoFeature, AnimatedListItem as AnimatedListItemType } from '@/lib/types';
+import type { CanvasRow, CanvasElement, HeroVideoData, BentoFeature, AnimatedListItem as AnimatedListItemType, HeaderElementData, ProjectData } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 // Import the same display components used in LandingPageGenerator
 // Ensure these components are client components and don't rely on builder-specific context if not provided.
 import MarqueeDemo from '@/components/native-ui/landing-page-elements/MarqueeDemo';
 import TerminalDemo from '@/components/native-ui/landing-page-elements/TerminalDemo';
-import HeroVideoDialog from '@/components/magicui/hero-video-dialog'; // Assuming this is the actual component
+import HeroVideoDialog from '@/components/magicui/hero-video-dialog'; 
 import BentoDemo from '@/components/native-ui/landing-page-elements/BentoDemo';
 import AnimatedListDemo from '@/components/native-ui/landing-page-elements/AnimatedListDemo';
-import { Button } from '@/components/ui/button'; // For rendering Button elements
-import Image from 'next/image'; // For rendering Image elements
+import HeaderElement from '@/components/native-ui/landing-page-elements/HeaderElement'; // Import HeaderElement
+import { Button } from '@/components/ui/button'; 
+import Image from 'next/image'; 
 
-interface ProjectData {
-  pageTitle: string;
-  canvasRows: CanvasRow[];
-}
+// Interface ProjectData moved to src/lib/types.ts
 
 export default function PublishedProjectPage() {
   const params = useParams();
@@ -35,8 +34,36 @@ export default function PublishedProjectPage() {
         if (storedData) {
           const parsedData = JSON.parse(storedData) as ProjectData;
           setProjectData(parsedData);
-          if (typeof document !== 'undefined' && parsedData.pageTitle) {
-            document.title = parsedData.pageTitle;
+          if (typeof document !== 'undefined') {
+            if (parsedData.pageTitle) {
+              document.title = parsedData.pageTitle;
+            }
+
+            const BODY_STYLE_ID = 'dynamic-body-background-style';
+            let bodyStyleTag = document.getElementById(BODY_STYLE_ID) as HTMLStyleElement | null;
+            if (parsedData.bodyBackgroundColor) {
+              if (!bodyStyleTag) {
+                bodyStyleTag = document.createElement('style');
+                bodyStyleTag.id = BODY_STYLE_ID;
+                document.head.appendChild(bodyStyleTag);
+              }
+              bodyStyleTag.innerHTML = `body { background-color: ${parsedData.bodyBackgroundColor} !important; }`;
+            } else if (bodyStyleTag) {
+              bodyStyleTag.remove(); // Remove style if no color specified
+            }
+
+
+            if (parsedData.fontFamilyImportUrl) {
+              const FONT_STYLESHEET_ID = 'dynamic-google-font-stylesheet-published';
+              let link = document.getElementById(FONT_STYLESHEET_ID) as HTMLLinkElement | null;
+              if (!link) {
+                link = document.createElement('link');
+                link.id = FONT_STYLESHEET_ID;
+                link.rel = 'stylesheet';
+                document.head.appendChild(link);
+              }
+              link.href = parsedData.fontFamilyImportUrl;
+            }
           }
         } else {
           setError('Project not found. It might not have been published or was removed.');
@@ -51,6 +78,16 @@ export default function PublishedProjectPage() {
       setError('Project ID is missing.');
       setIsLoading(false);
     }
+
+    // Cleanup dynamic body style on component unmount or projectId change
+    return () => {
+      if (typeof document !== 'undefined') {
+        const bodyStyleTag = document.getElementById('dynamic-body-background-style');
+        if (bodyStyleTag) {
+          bodyStyleTag.remove();
+        }
+      }
+    };
   }, [projectId]);
 
   const renderElementContent = (element: CanvasElement) => {
@@ -64,7 +101,7 @@ export default function PublishedProjectPage() {
         return (
           <div className="relative w-full my-4">
             <HeroVideoDialog
-              className="block dark:hidden" // Assuming light/dark mode is handled by the page's theme
+              className="block dark:hidden" 
               videoSrc={videoData.videoSrc}
               thumbnailSrc={videoData.thumbnailSrcLight}
               thumbnailAlt={videoData.thumbnailAlt}
@@ -85,6 +122,8 @@ export default function PublishedProjectPage() {
         return <BentoDemo features={(element.data as any).features || []} />;
       case 'AnimatedList':
         return <AnimatedListDemo notifications={(element.data as any).items || []} />;
+      case 'HeaderElement': 
+        return <HeaderElement {...(element.data as HeaderElementData)} />;
       case 'Section':
          return <div className="p-4 my-2 min-h-[50px] w-full border border-dashed border-neutral-300 rounded-md bg-neutral-50 dark:bg-neutral-800/30 text-neutral-400 flex items-center justify-center">Rendered Section</div>;
       case 'Heading':
@@ -109,7 +148,7 @@ export default function PublishedProjectPage() {
       case 'Button':
         return <Button variant="default" className="my-2">{element.data.text || "Button"}</Button>;
       default:
-        return <div className="my-2 p-2 bg-red-100 text-red-700 rounded-md">Unknown element type: {element.name}</div>;
+        return <div className="my-2 p-2 bg-red-100 text-red-700 rounded-md">Unknown element type: {element.type} ({element.name})</div>;
     }
   };
 
@@ -125,17 +164,32 @@ export default function PublishedProjectPage() {
     return <div className="flex items-center justify-center min-h-screen">Project data could not be loaded.</div>;
   }
 
+  const pageCanvasStyle: React.CSSProperties = {};
+  if (projectData.pageFillColor) {
+    pageCanvasStyle.backgroundColor = projectData.pageFillColor;
+  } else {
+    pageCanvasStyle.backgroundColor = 'transparent'; 
+  }
+
+  if (projectData.fontFamilyName) {
+    pageCanvasStyle.fontFamily = `'${projectData.fontFamilyName}', sans-serif`;
+  }
+
+
   return (
-    <div className="container mx-auto p-4 max-w-6xl">
-      {/* This div will simulate the body of the published page for styling purposes */}
-      <div className="bg-background text-foreground min-h-screen"> 
+    <div 
+      className="container mx-auto p-4 max-w-full" 
+      style={pageCanvasStyle} 
+    >
+      <div className="bg-transparent text-foreground min-h-screen">
         {projectData.canvasRows.map(row => (
           <div
             key={row.id}
             className={cn(
-              "grid gap-4 my-4", // Basic row styling, can be enhanced
-              row.layout // e.g., 'grid-cols-1', 'md:grid-cols-2'
+              "grid gap-4 my-0", 
+              row.layout
             )}
+            style={{ backgroundColor: row.backgroundColor || 'transparent' }}
           >
             {row.elements.length === 0 && parseInt(row.layout.split('-')[2] || '1', 10) > 0 &&
               Array.from({ length: parseInt(row.layout.split('-')[2] || '1', 10) }).map((_, idx) => (
@@ -155,3 +209,4 @@ export default function PublishedProjectPage() {
     </div>
   );
 }
+

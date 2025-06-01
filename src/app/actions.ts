@@ -45,6 +45,8 @@ export async function handleGenerateLandingPageCodeAction(
   }
 
   try {
+    // The input already matches GenerateLandingPageCodeInput from '@/lib/types'
+    // which now includes fontFamilyName and fontFamilyImportUrl
     const result: GenerateLandingPageCodeOutput = await generateLandingPageCode(input);
     if (result && result.code) {
       return { code: result.code, error: null };
@@ -61,3 +63,4 @@ export async function handleGenerateLandingPageCodeAction(
     return { code: null, error: errorMessage };
   }
 }
+

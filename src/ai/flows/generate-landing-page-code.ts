@@ -32,6 +32,14 @@ const GenerateLandingPageCodeInputSchema = z.object({
     .string()
     .optional()
     .describe('The title for the landing page (e.g., "Super Doge Moon Rocket").'),
+  fontFamilyName: z
+    .string()
+    .optional()
+    .describe('The name of the Google Font to use (e.g., "Roboto", "Open Sans").'),
+  fontFamilyImportUrl: z
+    .string()
+    .optional()
+    .describe('The Google Font import URL (e.g., "https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap").'),
 });
 
 const GenerateLandingPageCodeOutputSchema = z.object({
@@ -58,6 +66,8 @@ Page Title: {{{pageTitle}}}
 Primary Color: {{{primaryColor}}}
 Secondary Color: {{{secondaryColor}}}
 Accent Color: {{{accentColor}}}
+Font Family Name: {{{fontFamilyName}}}
+Font Family Import URL: {{{fontFamilyImportUrl}}}
 
 **Instructions:**
 1.  **Understand the Goal:** The user wants a landing page. If the description mentions "meme token", "crypto meme", or similar, ensure the design is playful, community-focused, and includes typical meme token sections. Otherwise, generate a standard professional landing page.
@@ -80,6 +90,14 @@ Accent Color: {{{accentColor}}}
     *   Incorporate the provided colors semantically (e.g., accent for CTAs, primary for important text/elements).
     *   Ensure a modern, clean, and professional design. For meme tokens, make it vibrant and engaging, possibly with a slightly less formal feel, but still well-structured.
     *   The page should be responsive.
+    *   **Font Application:**
+        *   If \`fontFamilyName\` and \`fontFamilyImportUrl\` are provided:
+            *   The component MUST import \`Head\` from \`next/head\`.
+            *   Include a \`<Head>\` section in the component.
+            *   Inside \`<Head>\`, add: \`<link rel="stylesheet" href="{{{fontFamilyImportUrl}}}" />\`.
+            *   Apply the font to the main wrapper div of the component using Tailwind's arbitrary value syntax: \`className="font-['{{{fontFamilyName}}}'] ...otherClasses"\`.
+            *   The fallback font should be 'sans-serif'.
+        *   If font details are not provided, use Tailwind's default sans-serif font stack (e.g., \`className="font-sans ..."\`).
 6.  **Components:**
     *   Use standard HTML elements styled with Tailwind.
     *   You MAY use ShadCN UI components if they fit naturally (e.g., \`Button\`, \`Card\` for feature blocks or roadmap items). Import them from \`@/components/ui/...\`.
@@ -93,9 +111,9 @@ Accent Color: {{{accentColor}}}
 8.  **Code Format:**
     *   Generate a single React functional component.
     *   The component should be self-contained in one file (e.g., \`export default function LandingPage() { ... }\`).
-    *   Include necessary imports at the top (\`React\`, \`next/image\`, \`lucide-react\` icons, any ShadCN components).
+    *   Include necessary imports at the top (\`React\`, \`Head\` from \`next/head\` if font is specified, \`next/image\`, \`lucide-react\` icons, any ShadCN components).
     *   Return only the code for the component. Do NOT include any surrounding text, explanations, or markdown backticks.
-9.  **Page Title:** If a pageTitle is provided ({{{pageTitle}}}), incorporate it into a main heading or hero section. If not, derive one from the description.
+9.  **Page Title:** If a pageTitle is provided ({{{pageTitle}}}), use it in the \`<Head><title>{{{pageTitle}}}</title></Head>\` tag. If not, derive one from the description for the main H1, but don't add a title tag.
 
 Generate the Next.js component code now.
 `,
@@ -112,3 +130,4 @@ const generateLandingPageCodeFlow = ai.defineFlow(
     return output!;
   }
 );
+

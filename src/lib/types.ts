@@ -72,7 +72,7 @@ export interface EtherscanApiToolConfig extends ToolConfigBase {
 export interface TheGraphToolConfig extends ToolConfigBase {
   type: 'THE_GRAPH_API';
   subgraphQueryUrl: string;
-  credentialId?: string; 
+  credentialId?: string;
 }
 
 export interface ShopifyAdminToolConfig extends ToolConfigBase {
@@ -83,7 +83,7 @@ export interface ShopifyAdminToolConfig extends ToolConfigBase {
 
 export interface PubMedSearchToolConfig extends ToolConfigBase {
   type: 'PUBMED_SEARCH_TOOL';
-  credentialId?: string; 
+  credentialId?: string;
 }
 
 
@@ -231,6 +231,24 @@ export interface Workflow {
 
 // For Landing Page Visual Builder
 
+export interface MarqueeReviewType {
+  id: string;
+  name: string;
+  username: string;
+  body: string;
+  img: string;
+  cardBackgroundColor?: string;
+  cardTextColor?: string;
+}
+
+export interface TerminalLine {
+  id: string;
+  type: 'typing' | 'animated';
+  text: string | React.ReactNode;
+  delay?: number;
+  className?: string;
+}
+
 export interface HeroVideoData {
   videoSrc: string;
   thumbnailSrcLight: string;
@@ -240,14 +258,14 @@ export interface HeroVideoData {
 }
 
 export interface BentoFeature {
-  id: string; 
+  id: string;
   Icon: React.ElementType;
   name: string;
   description: string;
   href: string;
   cta: string;
   className: string;
-  background?: React.ReactNode; 
+  background?: React.ReactNode;
 }
 
 export interface BentoData {
@@ -268,26 +286,114 @@ export interface AnimatedListData {
   items: AnimatedListItem[];
 }
 
+export interface CommandOption {
+  id: string;
+  label: string;
+}
+
+export interface NavLinkItem {
+  id: string;
+  text: string;
+  href: string;
+  isButton?: boolean;
+  submenu?: NavLinkItem[];
+}
+
+export type HeaderLayout = 
+  | 'logo-left-nav-right' 
+  | 'logo-center-nav-split' 
+  | 'logo-center-nav-below' 
+  | 'nav-left-logo-center-actions-right' 
+  | 'logo-left-nav-left-actions-right';
+
+export interface HeaderElementData {
+  siteTitle?: string;
+  logoUrl?: string;
+  navLinks?: NavLinkItem[];
+  backgroundColor?: string;
+  textColor?: string;
+  sticky?: boolean;
+  layout?: HeaderLayout;
+  gradientClass?: string;
+  templateId?: string;
+}
+
+export interface HeaderTemplate {
+  id: string;
+  name: string;
+  description: string;
+  icon?: React.ElementType;
+  data: Partial<HeaderElementData>;
+}
+
+
 export interface WebElementDefinition {
   name: string;
   type: string;
   previewComponent: React.ReactNode;
-  initialData: any;
+  initialData: Partial<CanvasElement['data']>; // Use Partial here
   icon?: React.ElementType;
-  category: string; // New field for categorization
+  category: string;
 }
 
 export interface CanvasElement {
   id: string;
   name: string;
-  type: string; 
-  data: any; 
+  type: string;
+  data: {
+    reviews?: MarqueeReviewType[];
+    lines?: TerminalLine[];
+    videoSrc?: string;
+    thumbnailSrcLight?: string;
+    thumbnailSrcDark?: string;
+    thumbnailAlt?: string;
+    animationStyle?: HeroVideoData['animationStyle'];
+    features?: BentoFeature[];
+    items?: AnimatedListItem[];
+    commands?: CommandOption[];
+    // Header specific data
+    siteTitle?: string;
+    logoUrl?: string;
+    navLinks?: NavLinkItem[];
+    backgroundColor?: string;
+    textColor?: string;
+    sticky?: boolean;
+    layout?: HeaderElementData['layout'];
+    gradientClass?: string;
+    templateId?: string;
+    // Generic text/button data
+    text?: string;
+    level?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+    src?: string;
+    alt?: string;
+    width?: number;
+    height?: number;
+    variant?: string;
+    className?: string; // For Section
+    plans?: any[]; // For Pricing Table
+    // For FAQ Accordion
+    // For Team Section
+    members?: any[];
+    // For Contact Form
+    fields?: any[];
+    // For CTA Section
+    buttonText?: string;
+    // AI Hint for images
+    'data-ai-hint'?: string;
+  };
 }
 
 export interface CanvasRow {
   id: string;
   layout: 'grid-cols-1' | 'grid-cols-2' | 'grid-cols-3' | 'grid-cols-4' | string;
   elements: CanvasElement[];
+  backgroundColor?: string; // Added for row-specific background color
+}
+
+export interface Breakpoint {
+  name: string;
+  width: number;
+  icon: React.ElementType;
 }
 
 // For AI Landing Page Code Generator (if distinct from visual builder elements)
@@ -297,4 +403,19 @@ export interface GenerateLandingPageCodeInput {
   secondaryColor: string;
   accentColor: string;
   pageTitle?: string;
+  fontFamilyName?: string;
+  fontFamilyImportUrl?: string;
 }
+
+// Project data structure for localStorage
+export interface ProjectData {
+  id: string; // Renamed from currentProjectId for clarity in storage
+  pageTitle: string;
+  canvasRows: CanvasRow[];
+  lastModified: string;
+  pageFillColor?: string;
+  fontFamilyName?: string;
+  fontFamilyImportUrl?: string;
+  bodyBackgroundColor?: string; // New: For the overall page body background
+}
+    

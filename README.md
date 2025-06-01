@@ -24,6 +24,7 @@ NativeUI Builder aims to empower developers and designers to rapidly create soph
     *   Name, save, and automatically persist workflows.
     *   Open and manage existing workflows through a dedicated modal.
 *   **Resizable Layout:** Flexible interface with resizable panels for components, canvas, and AI assistant.
+*   **Expanded Component Library:** Includes additional ShadCN UI elements like AspectRatio, Collapsible, Command menu, HoverCard, and Carousel to build richer layouts.
 *   **Modern Tech Stack:** Built with Next.js (App Router), React, ShadCN UI, Tailwind CSS, and Genkit for AI functionalities.
 
 ## Tech Stack
@@ -117,9 +118,13 @@ Follow these instructions to get a copy of the project up and running on your lo
     *   Click the "Sparkles" icon button (usually on the right or bottom-right of the canvas area) to toggle the AI Assistant panel.
     *   Ask the AI Assistant questions about how to use NativeUI Builder, its features, or general concepts.
 8.  **Save and Manage:**
-    *   Workflows are auto-saved as you make changes.
-    *   You can explicitly save using the "Save" button in the canvas header.
-    *   Use the "Share" button to (simulate) sharing your workflow.
+*   Workflows are auto-saved as you make changes.
+*   You can explicitly save using the "Save" button in the canvas header.
+*   Use the "Share" button to (simulate) sharing your workflow.
+
+## Landing Page Creator
+
+Select **Landing Page Creator** on the startup modal to experiment with a simple web page builder. Drag and drop headings, text blocks, images and other elements onto the canvas. The **Globe** icon lets you open a live preview in a new tab. Use **Publish** to save the page in localStorage and copy a shareable link.
 
 ## Future Enhancements
 
@@ -145,5 +150,4 @@ Please ensure your code adheres to the existing style and that all tests pass.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details (if one exists).
-*(Placeholder: You may want to add an actual LICENSE.md file with your chosen license, e.g., MIT, Apache 2.0)*
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
