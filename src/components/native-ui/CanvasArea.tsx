@@ -375,12 +375,12 @@ const CanvasArea = React.forwardRef<HTMLDivElement, CanvasAreaProps>(({
         <>
           {/* Scalable Container */}
           <div
-            className="relative p-4 bg-zinc-800 min-h-full min-w-full"
+            className="relative p-4 bg-zinc-800" 
             style={{
-              transformOrigin: 'top left',
+              transformOrigin: '0 0', 
               transform: `scale(${zoomLevel})`,
-              width: `${100 / zoomLevel}%`,
-              height: `${100 / zoomLevel}%`,
+              width: '10000px', 
+              height: '10000px', 
             }}
             data-canvas-area="true"
             data-ai-hint="workflow background"

@@ -327,6 +327,61 @@ export interface HeaderTemplate {
 }
 
 
+export type HtmlTag = 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
+export type TailwindFontSize = 
+  | 'text-xs' | 'text-sm' | 'text-base' | 'text-lg' | 'text-xl' 
+  | 'text-2xl' | 'text-3xl' | 'text-4xl' | 'text-5xl' | 'text-6xl';
+export type TextAlignment = 'text-left' | 'text-center' | 'text-right';
+
+
+// New Element Data Structures
+export interface TestimonialCardData {
+  quote: string;
+  authorName: string;
+  authorRole?: string;
+  avatarUrl?: string;
+  cardBackgroundColor?: string;
+  textColor?: string;
+}
+
+export interface FeatureItemData {
+  iconName: string; // Lucide icon name string
+  title: string;
+  description: string;
+  alignment?: 'left' | 'center' | 'right';
+}
+
+export interface LogoItem {
+  id: string;
+  src: string;
+  alt: string;
+  href?: string;
+}
+export interface LogoCloudData {
+  logos: LogoItem[];
+  title?: string;
+  columns?: 2 | 3 | 4 | 5 | 6;
+}
+
+export interface FooterLink {
+  id: string;
+  text: string;
+  href: string;
+}
+export interface FooterColumn {
+  id: string;
+  title?: string;
+  links: FooterLink[];
+}
+export interface FooterData {
+  copyrightText?: string;
+  columns?: FooterColumn[];
+  backgroundColor?: string;
+  textColor?: string;
+  socialLinks?: { platform: 'twitter' | 'facebook' | 'linkedin' | 'instagram' | string; href: string }[];
+}
+
+
 export interface WebElementDefinition {
   name: string;
   type: string;
@@ -339,7 +394,7 @@ export interface WebElementDefinition {
 export interface CanvasElement {
   id: string;
   name: string;
-  type: string;
+  type: 'HeaderElement' | 'Section' | 'Heading' | 'TextBlock' | 'Image' | 'Button' | 'MagicCommandPalette' | 'Alert' | 'Card' | 'Dialog' | 'Tabs' | 'Tooltip' | 'MarqueeTestimonials' | 'TerminalAnimation' | 'HeroVideoDialog' | 'BentoGrid' | 'AnimatedList' | 'PricingTable' | 'FaqAccordion' | 'TeamSection' | 'ContactForm' | 'CtaSection' | 'TestimonialCard' | 'FeatureItem' | 'LogoCloud' | 'Footer' | string;
   data: {
     reviews?: MarqueeReviewType[];
     lines?: TerminalLine[];
@@ -355,21 +410,25 @@ export interface CanvasElement {
     siteTitle?: string;
     logoUrl?: string;
     navLinks?: NavLinkItem[];
-    backgroundColor?: string;
-    textColor?: string;
+    backgroundColor?: string; // For elements like Section/Row, Header itself
+    textColor?: string; // For Header text color, TestimonialCard text
     sticky?: boolean;
     layout?: HeaderElementData['layout'];
     gradientClass?: string;
     templateId?: string;
     // Generic text/button data
     text?: string;
-    level?: 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-    src?: string;
-    alt?: string;
-    width?: number;
-    height?: number;
-    variant?: string;
-    className?: string; // For Section
+    htmlTag?: HtmlTag; // For Heading and TextBlock
+    fontSize?: TailwindFontSize; // For text elements
+    textAlign?: TextAlignment; // For text elements
+    cursor?: string; // For element-specific cursor
+    // level property is deprecated for Heading, use htmlTag
+    src?: string; // For Image, LogoItem
+    alt?: string; // For Image, LogoItem
+    width?: number; // For Image
+    height?: number; // For Image
+    variant?: string; // For Button, Alert
+    className?: string; // For Section general styling
     plans?: any[]; // For Pricing Table
     // For FAQ Accordion
     // For Team Section
@@ -380,6 +439,25 @@ export interface CanvasElement {
     buttonText?: string;
     // AI Hint for images
     'data-ai-hint'?: string;
+
+    // New Element Data
+    quote?: string; // TestimonialCard
+    authorName?: string; // TestimonialCard
+    authorRole?: string; // TestimonialCard
+    avatarUrl?: string; // TestimonialCard
+    cardBackgroundColor?: string; // TestimonialCard
+
+    iconName?: string; // FeatureItem (lucide icon name)
+    title?: string; // FeatureItem, LogoCloud, CtaSection
+    description?: string; // FeatureItem
+    alignment?: 'left' | 'center' | 'right'; // FeatureItem
+
+    logos?: LogoItem[]; // LogoCloud
+    columns?: 2 | 3 | 4 | 5 | 6; // LogoCloud, Footer columns
+
+    copyrightText?: string; // Footer
+    // Footer columns are part of 'columns' property above using FooterColumn[]
+    socialLinks?: { platform: string; href: string }[]; // Footer
   };
 }
 
@@ -417,5 +495,8 @@ export interface ProjectData {
   fontFamilyName?: string;
   fontFamilyImportUrl?: string;
   bodyBackgroundColor?: string; // New: For the overall page body background
+  propPageCursor?: string; // New: For page-level cursor
 }
+    
+
     

@@ -8,6 +8,7 @@ import { Menu, X } from 'lucide-react';
 import type { HeaderElementData, NavLinkItem, HeaderLayout } from '@/lib/types';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
+import { ThemeToggle } from '@/components/ThemeToggle'; // Import ThemeToggle
 
 interface HeaderElementProps extends HeaderElementData {
   // No additional props needed for basic rendering
@@ -111,14 +112,18 @@ const HeaderElement: React.FC<HeaderElementProps> = ({
       )}
     >
       {renderNavLinks(actionLinks)}
+      <div className="ml-2">
+        <ThemeToggle />
+      </div>
     </div>
   );
 
   const mobileMenuButton = (
-    <div className={cn("md:hidden", 
+    <div className={cn("md:hidden flex items-center gap-2", 
         (layout === 'logo-left-nav-right' || layout === 'logo-left-nav-left-actions-right') && 'ml-auto',
         (layout === 'nav-left-logo-center-actions-right' && actionLinks.length === 0) && 'ml-auto' // if no actions, menu button goes to right
     )}>
+      <ThemeToggle />
       <Button
         variant="ghost"
         size="icon"
@@ -136,7 +141,7 @@ const HeaderElement: React.FC<HeaderElementProps> = ({
       {layout === 'logo-left-nav-right' && (
         <div className="container mx-auto flex items-center justify-between">
           {logoComponent}
-          <div className="flex items-center">
+          <div className="hidden md:flex items-center">
             {desktopNav}
             {desktopActions}
           </div>
@@ -150,10 +155,12 @@ const HeaderElement: React.FC<HeaderElementProps> = ({
              {renderNavLinks(regularLinks.slice(0, Math.ceil(regularLinks.length / 2)))}
           </nav>
           {logoComponent}
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2">
-             {renderNavLinks(regularLinks.slice(Math.ceil(regularLinks.length / 2)))}
-             {renderNavLinks(actionLinks)}
-          </nav>
+          <div className="hidden md:flex items-center">
+            <nav className="flex items-center space-x-1 lg:space-x-2">
+              {renderNavLinks(regularLinks.slice(Math.ceil(regularLinks.length / 2)))}
+            </nav>
+            {desktopActions}
+          </div>
           {mobileMenuButton}
         </div>
       )}
@@ -164,10 +171,12 @@ const HeaderElement: React.FC<HeaderElementProps> = ({
             {logoComponent}
             {mobileMenuButton}
           </div>
-          <nav className="hidden md:flex items-center space-x-1 lg:space-x-2 mt-2 pt-2 border-t border-current/20 w-full justify-center">
-            {renderNavLinks(regularLinks)}
-            {renderNavLinks(actionLinks)}
-          </nav>
+          <div className="hidden md:flex items-center mt-2 pt-2 border-t border-current/20 w-full justify-center">
+            <nav className="flex items-center space-x-1 lg:space-x-2">
+              {renderNavLinks(regularLinks)}
+            </nav>
+            {desktopActions}
+          </div>
         </div>
       )}
 
@@ -177,7 +186,9 @@ const HeaderElement: React.FC<HeaderElementProps> = ({
           <div className="flex-1 flex justify-center items-center md:absolute md:left-1/2 md:-translate-x-1/2">
             {logoComponent}
           </div>
-          {desktopActions}
+          <div className="hidden md:flex items-center">
+            {desktopActions}
+          </div>
           {mobileMenuButton}
         </div>
       )}
@@ -185,10 +196,10 @@ const HeaderElement: React.FC<HeaderElementProps> = ({
       {layout === 'logo-left-nav-left-actions-right' && (
          <div className="container mx-auto flex items-center">
           {logoComponent}
-          <div className="flex items-center ml-6"> {/* Added ml-6 for spacing */}
+          <div className="hidden md:flex items-center ml-6"> {/* Added ml-6 for spacing */}
              {desktopNav}
           </div>
-          <div className="ml-auto flex items-center">
+          <div className="ml-auto hidden md:flex items-center">
             {desktopActions}
           </div>
           {mobileMenuButton}
@@ -215,3 +226,4 @@ const HeaderElement: React.FC<HeaderElementProps> = ({
 };
 
 export default HeaderElement;
+

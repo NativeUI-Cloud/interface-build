@@ -7,10 +7,11 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Shapes, Palette, PanelLeft, Edit3, Trash2, Copy, Download, SendHorizonal, Sparkles, GripVertical, LayoutGrid as LayoutGridIcon,
   Type as TypeIcon, Database, Settings, Users, Play, Globe, Settings2 as SettingsIcon, ChevronDown, Search, PlusCircle,
-  Monitor, Tablet, Smartphone, MousePointer, Hand, Circle as CircleIcon, Sun as SunIcon, Grid2x2 as GridIconLucide, Eye,
+  Monitor, Tablet, Smartphone, MousePointer, Hand, Circle as CircleIcon, Sun as SunIcon, Grid as GridIconLucide, Eye,
   Link as LinkIconLucide, Info, Heading1, Baseline, ImageIcon, MessageSquareText, ListChecks, Youtube, TerminalSquareIcon,
   Undo2, Save, LayoutPanelLeft, Plus, Minus, CreditCard, HelpCircle, Mail, Megaphone, UserCircle, Video,
-  ArrowLeft, ClipboardCopy, FileText, GitFork, Home, UploadCloud, ListTodo, TerminalSquare, PanelTop, Server, FontAwesome, Type, FilePlus2, Projector
+  ArrowLeft, ClipboardCopy, FileText, GitFork, Home, UploadCloud, ListTodo, TerminalSquare, PanelTop, PanelBottom, Server, FontAwesome, Type, FilePlus2, Projector,
+  AlignCenter, AlignLeft, AlignRight, FontSize, HandIcon, Star, UserSquare2, MessageSquareQuote, Lightbulb, Building, Twitter, Facebook, Linkedin, Instagram
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -43,8 +44,10 @@ import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-import type { CanvasElement, CanvasRow, HeroVideoData, MarqueeReviewType, TerminalLine as ITerminalLine, BentoFeature, AnimatedListItem as AnimatedListItemType, WebElementDefinition, Breakpoint as BreakpointType, HeaderElementData, GenerateLandingPageCodeInput, ProjectData } from '@/lib/types';
+import type { CanvasElement, CanvasRow, HeroVideoData, MarqueeReviewType, TerminalLine as ITerminalLine, BentoFeature, AnimatedListItem as AnimatedListItemType, WebElementDefinition, Breakpoint as BreakpointType, HeaderElementData, GenerateLandingPageCodeInput, ProjectData, HtmlTag, TailwindFontSize, TextAlignment, TestimonialCardData, FeatureItemData, LogoCloudData, FooterData, LogoItem, FooterColumn, FooterLink } from '@/lib/types';
 import { handleGenerateLandingPageCodeAction } from '@/app/actions';
+import { useTheme } from "next-themes";
+import * as LucideIcons from 'lucide-react';
 
 
 import MarqueeDemo, { defaultReviews as defaultMarqueeReviews } from './landing-page-elements/MarqueeDemo';
@@ -128,12 +131,53 @@ const googleFonts = [
   { name: 'Space Mono', importUrl: 'https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap', family: "'Space Mono', monospace" },
 ];
 
+const fontSizeOptions: { value: TailwindFontSize; label: string }[] = [
+  { value: 'text-xs', label: 'X-Small (xs)' },
+  { value: 'text-sm', label: 'Small (sm)' },
+  { value: 'text-base', label: 'Base (base)' },
+  { value: 'text-lg', label: 'Large (lg)' },
+  { value: 'text-xl', label: 'X-Large (xl)' },
+  { value: 'text-2xl', label: '2X-Large (2xl)' },
+  { value: 'text-3xl', label: '3X-Large (3xl)' },
+  { value: 'text-4xl', label: '4X-Large (4xl)' },
+  { value: 'text-5xl', label: '5X-Large (5xl)' },
+  { value: 'text-6xl', label: '6X-Large (6xl)' },
+];
+const DEFAULT_FONT_SIZE_VALUE = "__DEFAULT_FONT_SIZE__";
+
+
+const textAlignOptions: { value: TextAlignment; label: string; icon: React.ElementType }[] = [
+  { value: 'text-left', label: 'Left', icon: AlignLeft },
+  { value: 'text-center', label: 'Center', icon: AlignCenter },
+  { value: 'text-right', label: 'Right', icon: AlignRight },
+];
+
+const DEFAULT_CURSOR_VALUE = "__DEFAULT_CURSOR__";
+const cursorOptions: { value: string; label: string }[] = [
+  { value: DEFAULT_CURSOR_VALUE, label: 'Default (Auto)' },
+  { value: 'cursor-auto', label: 'Auto' },
+  { value: 'cursor-default', label: 'Default Arrow' },
+  { value: 'cursor-pointer', label: 'Pointer (Hand)' },
+  { value: 'cursor-wait', label: 'Wait (Hourglass)' },
+  { value: 'cursor-text', label: 'Text (I-beam)' },
+  { value: 'cursor-move', label: 'Move (All directions)' },
+  { value: 'cursor-not-allowed', label: 'Not Allowed' },
+  { value: 'cursor-grab', label: 'Grab (Open Hand)' },
+  { value: 'cursor-grabbing', label: 'Grabbing (Closed Hand)' },
+  { value: 'cursor-help', label: 'Help (Question Mark)' },
+  { value: 'cursor-zoom-in', label: 'Zoom In' },
+  { value: 'cursor-zoom-out', label: 'Zoom Out' },
+  { value: 'cursor-none', label: 'None (Hidden)' },
+  { value: 'cursor-crosshair', label: 'Crosshair' },
+  { value: 'cursor-progress', label: 'Progress (Busy)' },
+];
+
 
 const webElements: WebElementDefinition[] = [
   { name: 'Header', type: 'HeaderElement', previewComponent: <HeaderElement {...defaultHeaderData} />, initialData: defaultHeaderData, category: 'Layout', icon: PanelTop },
-  { name: 'Section', type: 'Section', previewComponent: <div className="h-20 w-full bg-muted/50 rounded-md flex items-center justify-center text-muted-foreground text-sm p-2">Section: Add columns and elements inside.</div>, initialData: { className: 'py-12' }, category: 'Layout', icon: LayoutPanelLeft },
-  { name: 'Heading', type: 'Heading', previewComponent: <h1 className="text-2xl font-bold p-2">Heading Text</h1>, initialData: { text: 'Default Heading', level: 'h1' }, category: 'Content', icon: Heading1 },
-  { name: 'Text Block', type: 'TextBlock', previewComponent: <p className="p-2">This is a paragraph of text. Edit me!</p>, initialData: { text: 'Default text block content.' }, category: 'Content', icon: Baseline },
+  { name: 'Section', type: 'Section', previewComponent: <div className="h-20 w-full bg-muted/50 rounded-md flex items-center justify-center text-muted-foreground text-sm p-2">Section: Add columns and elements inside.</div>, initialData: { className: 'py-12', backgroundColor: undefined }, category: 'Layout', icon: LayoutPanelLeft },
+  { name: 'Heading', type: 'Heading', previewComponent: <h1 className="text-2xl font-bold p-2">Heading Text</h1>, initialData: { text: 'Default Heading', htmlTag: 'h1', textAlign: 'text-left' }, category: 'Content', icon: Heading1 },
+  { name: 'Text Block', type: 'TextBlock', previewComponent: <p className="p-2">This is a paragraph of text. Edit me!</p>, initialData: { text: 'Default text block content.', htmlTag: 'p', textAlign: 'text-left' }, category: 'Content', icon: Baseline },
   { name: 'Image', type: 'Image', previewComponent: <NextImage src="https://placehold.co/300x200.png" alt="Placeholder" width={150} height={100} data-ai-hint="placeholder image" className="m-2"/>, initialData: { src: 'https://placehold.co/600x400.png', alt: 'Placeholder Image', width: 600, height: 400, 'data-ai-hint': 'placeholder image' }, category: 'Content', icon: ImageIcon },
   { name: 'Button', type: 'Button', previewComponent: <div className="p-2"><Button>Click Me</Button></div>, initialData: { text: 'Button Text', variant: 'default' }, category: 'Interactive Elements', icon: MousePointer },
   { name: 'Magic Command Palette', type: 'MagicCommandPalette', previewComponent: <McpDemo />, initialData: { commands: defaultMcpCommands }, category: 'Magic UI Components', icon: Palette },
@@ -152,17 +196,32 @@ const webElements: WebElementDefinition[] = [
   { name: 'Team Section', type: 'TeamSection', previewComponent: <div className="h-20 w-full bg-muted/50 rounded-md flex items-center justify-center text-muted-foreground text-sm p-2 gap-2"><Avatar><AvatarFallback>TM</AvatarFallback></Avatar><Avatar><AvatarFallback>JD</AvatarFallback></Avatar></div>, initialData: { members: [] }, category: 'Content', icon: Users },
   { name: 'Contact Form', type: 'ContactForm', previewComponent: <div className="p-2 space-y-2 w-full"><Label htmlFor="email-prev">Email</Label><Input id="email-prev" type="email" placeholder="Email" /><Button size="sm">Submit</Button></div>, initialData: { fields: [] }, category: 'Interactive Elements', icon: Mail },
   { name: 'Call to Action Section', type: 'CtaSection', previewComponent: <div className="p-4 bg-primary/10 rounded-md text-center space-y-2"><h3 className="font-semibold">Call to Action!</h3><Button>Get Started</Button></div>, initialData: { title: "Ready to start?", buttonText: "Sign Up" }, category: 'Layout', icon: Megaphone },
+  { name: 'Testimonial Card', type: 'TestimonialCard', icon: MessageSquareQuote, category: 'Content', previewComponent: <Card className="w-full max-w-xs m-2"><CardHeader><Avatar className="mb-2"><AvatarImage src="https://avatar.vercel.sh/placeholder" alt="User" /><AvatarFallback>U</AvatarFallback></Avatar><CardTitle className="text-sm">John Doe</CardTitle><CardDescription className="text-xs">CEO, Example Inc.</CardDescription></CardHeader><CardContent><p className="text-sm italic">"This is a great product!"</p></CardContent></Card>, initialData: { quote: "This product changed my life!", authorName: "Jane Doe", authorRole: "Designer", avatarUrl: "https://avatar.vercel.sh/jane?size=64", cardBackgroundColor: undefined, textColor: undefined } as TestimonialCardData },
+  { name: 'Feature Item', type: 'FeatureItem', icon: Lightbulb, category: 'Content', previewComponent: <div className="p-4 m-2 border rounded-lg text-center w-48"><Star className="mx-auto h-8 w-8 text-primary mb-2" /><h3 className="font-semibold text-sm">Feature Title</h3><p className="text-xs text-muted-foreground">Brief description of the feature.</p></div>, initialData: { iconName: 'Award', title: 'Amazing Feature', description: 'Explain why this feature is so amazing and beneficial to the user.', alignment: 'center' } as FeatureItemData },
+  { name: 'Logo Cloud', type: 'LogoCloud', icon: Building, category: 'Content', previewComponent: <div className="p-4 m-2 border rounded-lg w-full max-w-md"><p className="text-center text-sm text-muted-foreground mb-2">Our Partners</p><div className="flex justify-around items-center"><LucideIcons.Figma className="h-8 w-8 text-muted-foreground/70" /><LucideIcons.Framer className="h-8 w-8 text-muted-foreground/70" /><LucideIcons.Sketch className="h-8 w-8 text-muted-foreground/70" /></div></div>, initialData: { title: 'Trusted By', logos: [{id: uuidv4(), src: "https://placehold.co/100x40/svg?text=Logo1&font=roboto", alt: "Client Logo 1"}, {id: uuidv4(), src: "https://placehold.co/120x30/svg?text=Logo2&font=open-sans", alt: "Client Logo 2"}], columns: 4 } as LogoCloudData },
+  { name: 'Footer', type: 'Footer', icon: PanelBottom, category: 'Layout', previewComponent: <footer className="p-4 bg-muted/50 text-center text-xs w-full m-2 rounded"><p>&copy; 2024 Your Company</p></footer>, initialData: { copyrightText: `© ${new Date().getFullYear()} Your Company. All rights reserved.`, columns: [{id: uuidv4(), title: 'Links', links: [{id: uuidv4(), text: 'Privacy', href: '#'}, {id: uuidv4(), text: 'Terms', href: '#'}]}], backgroundColor: 'bg-muted', textColor: 'text-muted-foreground', socialLinks: [] } as FooterData },
 ];
 
-interface StoredProjectMetadata { 
+interface StoredProjectMetadata {
   id: string;
   title: string;
   lastModified: string;
 }
 
+const htmlTagOptions: { value: HtmlTag; label: string }[] = [
+  { value: 'p', label: 'Paragraph (p)' },
+  { value: 'h1', label: 'Heading 1 (h1)' },
+  { value: 'h2', label: 'Heading 2 (h2)' },
+  { value: 'h3', label: 'Heading 3 (h3)' },
+  { value: 'h4', label: 'Heading 4 (h4)' },
+  { value: 'h5', label: 'Heading 5 (h5)' },
+  { value: 'h6', label: 'Heading 6 (h6)' },
+];
+
 
 export default function LandingPageGenerator() {
   const { toast } = useToast();
+  const { theme, setTheme } = useTheme();
   const isMobile = useIsMobile();
   const [activeView, setActiveView] = useState<'dashboard' | 'editor' | 'settings' | 'ai-generator'>('editor');
 
@@ -170,29 +229,30 @@ export default function LandingPageGenerator() {
   const [allProjects, setAllProjects] = useState<StoredProjectMetadata[]>([]);
 
 
-  
+
   const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
   const [pageTitle, setPageTitle] = useState('Untitled Page');
   const [canvasRows, setCanvasRows] = useState<CanvasRow[]>([]);
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
+  const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [currentPreview, setCurrentPreview] = useState<{ name: string; previewComponent: React.ReactNode } | null>(null);
   const [previousCanvasRows, setPreviousCanvasRows] = useState<CanvasRow[] | null>(null);
-  
+
   const [publishStatus, setPublishStatus] = useState<'idle' | 'publishing' | 'success' | 'error_local_save' | 'error_clipboard'>('idle');
   const [publishedPageUrl, setPublishedPageUrl] = useState<string | null>(null);
   const [paletteSearchTerm, setPaletteSearchTerm] = useState('');
 
-  
+
   const [activeCanvasTool, setActiveCanvasTool] = useState<'select' | 'pan'>('select');
   const [isCanvasPanning, setIsCanvasPanning] = useState(false);
   const [panStartCoords, setPanStartCoords] = useState<{ x: number; y: number; scrollLeft: number; scrollTop: number } | null>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
-  const scrollableElementRef = useRef<HTMLElement | null>(null); 
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [canvasZoom, setCanvasZoom] = useState(1.0);
   const [activeBreakpoint, setActiveBreakpoint] = useState<BreakpointType>(PREDEFINED_BREAKPOINTS[0]);
+  const [isGridVisible, setIsGridVisible] = useState(false);
 
-  
+
   const [isEditMarqueeModalOpen, setIsEditMarqueeModalOpen] = useState(false);
   const [editingMarqueeElementId, setEditingMarqueeElementId] = useState<string | null>(null);
   const [isEditHeroVideoModalOpen, setIsEditHeroVideoModalOpen] = useState(false);
@@ -202,7 +262,7 @@ export default function LandingPageGenerator() {
   const [isEditHeaderModalOpen, setIsEditHeaderModalOpen] = useState(false);
   const [editingHeaderElementId, setEditingHeaderElementId] = useState<string | null>(null);
 
-  
+
   const [aiPageDescription, setAiPageDescription] = useState('');
   const [aiPrimaryColor, setAiPrimaryColor] = useState('#1A202C');
   const [aiSecondaryColor, setAiSecondaryColor] = useState('#EDF2F7');
@@ -213,7 +273,7 @@ export default function LandingPageGenerator() {
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
 
 
-  
+
   const [siteTitleSettings, setSiteTitleSettings] = useState('My NativeUI Site');
   const [siteDescriptionSettings, setSiteDescriptionSettings] = useState('Made with NativeUI Builder');
   const [siteLanguageSettings, setSiteLanguageSettings] = useState('');
@@ -221,7 +281,7 @@ export default function LandingPageGenerator() {
   const [optOutHtmlPaste, setOptOutHtmlPaste] = useState(false);
   const [activeSettingsSection, setActiveSettingsSection] = useState<string>('general');
 
-  
+
   const [propPositionX, setPropPositionX] = useState(0);
   const [propPositionY, setPropPositionY] = useState(0);
   const [propWidth, setPropWidth] = useState(activeBreakpoint.width);
@@ -231,27 +291,26 @@ export default function LandingPageGenerator() {
   const [propBaseFontSize, setPropBaseFontSize] = useState(16);
   const [propPageFontFamilyName, setPropPageFontFamilyName] = useState(googleFonts[0].name);
   const [propPageFontFamilyImportUrl, setPropPageFontFamilyImportUrl] = useState(googleFonts[0].importUrl);
-  const [propPageFillColor, setPropPageFillColor] = useState<string | undefined>(undefined); 
+  const [propPageFillColor, setPropPageFillColor] = useState<string | undefined>(undefined);
+  const [propPageCursor, setPropPageCursor] = useState<string | undefined>(undefined);
   const [propOverflow, setPropOverflow] = useState("Visible");
   const [propBodyBackgroundColor, setPropBodyBackgroundColor] = useState<string | undefined>(undefined);
   const originalBodyBackgroundColorRef = useRef<string | null>(null);
+
+  const [draggingElementInfo, setDraggingElementInfo] = useState<{ rowId: string; elementId: string; elementIndex: number } | null>(null);
+  const [dragOverElementInfo, setDragOverElementInfo] = useState<{ rowId: string; elementId: string; elementIndex: number } | null>(null);
+
+  const selectedElement = React.useMemo(() => {
+    if (!selectedElementId || !selectedRowId) return null;
+    const row = canvasRows.find(r => r.id === selectedRowId);
+    return row?.elements.find(el => el.id === selectedElementId) || null;
+  }, [selectedElementId, selectedRowId, canvasRows]);
 
 
   useEffect(() => {
     setPropWidth(activeBreakpoint.width);
   }, [activeBreakpoint]);
 
-  useEffect(() => {
-    if (canvasRef.current) {
-      const viewport = canvasRef.current.querySelector('.h-full.w-full.rounded-\\[inherit\\]') as HTMLElement;
-      if (viewport) {
-        scrollableElementRef.current = viewport;
-      } else {
-        const fallbackViewport = canvasRef.current.querySelector('div[style*="overflow: scroll;"]');
-        scrollableElementRef.current = (fallbackViewport as HTMLElement) || canvasRef.current; 
-      }
-    }
-  }, []); 
 
   const loadAllProjectsMetadata = useCallback(() => {
     const storage = localStorage;
@@ -262,7 +321,7 @@ export default function LandingPageGenerator() {
         const storedData = storage.getItem(key);
         if (storedData) {
           try {
-            const parsedData = JSON.parse(storedData) as ProjectData; 
+            const parsedData = JSON.parse(storedData) as ProjectData;
             projects.push({
               id: key.replace('project-', ''),
               title: parsedData.pageTitle || 'Untitled Project',
@@ -283,18 +342,22 @@ export default function LandingPageGenerator() {
     setHasMounted(true);
     const projects = loadAllProjectsMetadata();
     const lastProjectId = localStorage.getItem('landingPageBuilder-lastProjectId');
-    originalBodyBackgroundColorRef.current = document.body.style.backgroundColor;
+    originalBodyBackgroundColorRef.current = typeof document !== 'undefined' ? document.body.style.backgroundColor : '';
 
 
     if (projects.length > 0) {
       setActiveView('dashboard');
     } else {
-      setActiveView('editor'); 
-      resetEditorState(); 
+      setActiveView('editor');
+      resetEditorState();
     }
     return () => {
-      if (originalBodyBackgroundColorRef.current !== null) {
+      if (originalBodyBackgroundColorRef.current !== null && typeof document !== 'undefined') {
         document.body.style.backgroundColor = originalBodyBackgroundColorRef.current;
+      }
+      const dynamicStyleTag = document.getElementById('dynamic-body-background-style');
+      if (dynamicStyleTag) {
+        dynamicStyleTag.remove();
       }
     };
   }, [loadAllProjectsMetadata]);
@@ -303,7 +366,7 @@ export default function LandingPageGenerator() {
   useEffect(() => {
     if (currentProjectId) {
         localStorage.setItem('landingPageBuilder-lastProjectId', currentProjectId);
-    } else if (activeView === 'editor') { 
+    } else if (activeView === 'editor') {
         localStorage.removeItem('landingPageBuilder-lastProjectId');
     }
   }, [currentProjectId, activeView]);
@@ -312,21 +375,28 @@ export default function LandingPageGenerator() {
   const resetEditorState = (newTitle: string = 'Untitled Page') => {
     setPageTitle(newTitle);
     setCanvasRows([]);
-    setCurrentProjectId(null); 
+    setCurrentProjectId(null);
     setPreviousCanvasRows(null);
     setPublishStatus('idle');
     setPublishedPageUrl(null);
     setPropPageFontFamilyName(googleFonts[0].name);
     setPropPageFontFamilyImportUrl(googleFonts[0].importUrl);
-    setPropPageFillColor(undefined); 
+    setPropPageFillColor(undefined);
+    setPropPageCursor(undefined);
     setPropBodyBackgroundColor(undefined);
-    if (originalBodyBackgroundColorRef.current !== null) {
+    setSelectedRowId(null);
+    setSelectedElementId(null);
+    if (typeof document !== 'undefined' && originalBodyBackgroundColorRef.current !== null) {
       document.body.style.backgroundColor = originalBodyBackgroundColorRef.current;
+      const dynamicStyleTag = document.getElementById('dynamic-body-background-style');
+      if (dynamicStyleTag) {
+        dynamicStyleTag.remove();
+      }
     }
     setActiveView('editor');
     toast({ title: "New Page Ready", description: "The editor has been reset for a new landing page." });
   };
-  
+
   const handleNewPage = () => {
     resetEditorState(`My New Page ${allProjects.length + 1}`);
   };
@@ -365,16 +435,91 @@ export default function LandingPageGenerator() {
     const newRow: CanvasRow = { id: uuidv4(), layout: 'grid-cols-1', elements: [], backgroundColor: undefined };
     setCanvasRows(prev => [...prev, newRow]);
     setSelectedRowId(newRow.id);
+    setSelectedElementId(null);
     toast({ title: "Row Added", description: "A new row has been added to the canvas." });
   };
 
-  const handleElementClick = (el: WebElementDefinition) => {
+  const handleElementClickInPalette = (el: WebElementDefinition) => {
     setCurrentPreview({ name: el.name, previewComponent: el.previewComponent });
     setIsPreviewModalOpen(true);
   };
 
-  const handleDragStart = (event: React.DragEvent<HTMLDivElement>, elementName: string) => {
-    event.dataTransfer.setData("application/json", JSON.stringify({ type: 'ADD_ELEMENT', elementName }));
+  const handleElementDragStart = (event: React.DragEvent<HTMLDivElement>, rowId: string, elementId: string, elementIndex: number) => {
+    setDraggingElementInfo({ rowId, elementId, elementIndex });
+    event.dataTransfer.setData('application/json', JSON.stringify({ type: 'REORDER_ELEMENT', elementId, rowId, elementIndex }));
+    event.dataTransfer.effectAllowed = 'move';
+  };
+  
+  const handleElementDragEnd = () => {
+    setDraggingElementInfo(null);
+    setDragOverElementInfo(null);
+  };
+  
+  const handleElementDragOver = (event: React.DragEvent<HTMLDivElement>, rowId: string, elementId: string, elementIndex: number) => {
+    event.preventDefault();
+    event.stopPropagation(); 
+    if (draggingElementInfo && draggingElementInfo.rowId === rowId) {
+        event.dataTransfer.dropEffect = 'move';
+        if (draggingElementInfo.elementId !== elementId) { 
+            setDragOverElementInfo({ rowId, elementId, elementIndex });
+        } else {
+            setDragOverElementInfo(null);
+        }
+    } else {
+        event.dataTransfer.dropEffect = 'none';
+        setDragOverElementInfo(null);
+    }
+  };
+  
+  const handleElementDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
+    const relatedTarget = event.relatedTarget as Node;
+    if (!(event.currentTarget as Node).contains(relatedTarget)) {
+        setDragOverElementInfo(null);
+    }
+  };
+  
+  const handleElementDropOnElement = (event: React.DragEvent<HTMLDivElement>, targetRowId: string, targetElementId: string, targetElementIndex: number) => {
+    event.preventDefault();
+    event.stopPropagation(); 
+    if (!draggingElementInfo) {
+      setDragOverElementInfo(null);
+      return;
+    }
+  
+    const { rowId: sourceRowId, elementId: sourceElementId, elementIndex: sourceElementIndex } = draggingElementInfo;
+  
+    if (sourceRowId !== targetRowId) {
+      toast({ title: "Move Canceled", description: "Elements can only be reordered within the same row.", variant: "default" });
+      setDraggingElementInfo(null);
+      setDragOverElementInfo(null);
+      return;
+    }
+  
+    if (sourceElementId === targetElementId) { 
+      setDraggingElementInfo(null);
+      setDragOverElementInfo(null);
+      return;
+    }
+  
+    storePreviousState();
+  
+    setCanvasRows((prevRows) =>
+      prevRows.map((row) => {
+        if (row.id === sourceRowId) {
+          const newElements = [...row.elements];
+          const [draggedItem] = newElements.splice(sourceElementIndex, 1);
+          
+          newElements.splice(targetElementIndex, 0, draggedItem);
+          
+          return { ...row, elements: newElements };
+        }
+        return row;
+      })
+    );
+  
+    toast({ title: "Element Reordered", description: "Element order updated within the row." });
+    setDraggingElementInfo(null);
+    setDragOverElementInfo(null);
   };
 
   const handleDropOnCanvas = (event: React.DragEvent<HTMLDivElement>, targetRowId?: string) => {
@@ -383,48 +528,81 @@ export default function LandingPageGenerator() {
     try {
       const dataString = event.dataTransfer.getData("application/json");
       if (!dataString) return;
+      const parsedData = JSON.parse(dataString);
 
-      const { elementName } = JSON.parse(dataString);
-      const elementDefinition = webElements.find(el => el.name === elementName);
+      if (parsedData.type === 'ADD_ELEMENT') {
+        const { elementName } = parsedData;
+        const elementDefinition = webElements.find(el => el.name === elementName);
 
-      if (elementDefinition) {
-        storePreviousState();
-        const newElement: CanvasElement = {
-          id: uuidv4(),
-          name: elementDefinition.name,
-          type: elementDefinition.type,
-          data: deepCopy(elementDefinition.initialData),
-        };
-
-        setCanvasRows(prevRows => {
-          if (targetRowId) { 
-            const newRows = prevRows.map(row => {
-              if (row.id === targetRowId) {
-                return { ...row, elements: [...row.elements, newElement] };
-              }
-              return row;
-            });
-            toast({ title: "Element Added", description: `${elementDefinition.name} added to row.` });
-            return newRows;
-          } else { 
-            const newRowWithElement: CanvasRow = { id: uuidv4(), layout: 'grid-cols-1', elements: [newElement], backgroundColor: undefined };
-            setSelectedRowId(newRowWithElement.id); 
-            toast({ title: "Element Added", description: `${elementDefinition.name} added to a new row.` });
-            return [...prevRows, newRowWithElement];
+        if (elementDefinition) {
+          storePreviousState();
+          const newElement: CanvasElement = {
+            id: uuidv4(),
+            name: elementDefinition.name,
+            type: elementDefinition.type,
+            data: deepCopy(elementDefinition.initialData),
+          };
+          
+          if (newElement.type === 'Heading' || newElement.type === 'TextBlock') {
+             newElement.data.textAlign = 'text-left';
           }
-        });
+
+
+          setCanvasRows(prevRows => {
+            if (targetRowId) {
+              const newRows = prevRows.map(row => {
+                if (row.id === targetRowId) {
+                  return { ...row, elements: [...row.elements, newElement] };
+                }
+                return row;
+              });
+              toast({ title: "Element Added", description: `${elementDefinition.name} added to row.` });
+              return newRows;
+            } else {
+              const newRowWithElement: CanvasRow = { id: uuidv4(), layout: 'grid-cols-1', elements: [newElement], backgroundColor: undefined };
+              setSelectedRowId(newRowWithElement.id);
+              setSelectedElementId(null);
+              toast({ title: "Element Added", description: `${elementDefinition.name} added to a new row.` });
+              return [...prevRows, newRowWithElement];
+            }
+          });
+        }
+      } else if (parsedData.type === 'REORDER_ELEMENT' && targetRowId && draggingElementInfo) {
+         const { rowId: sourceRowId, elementIndex: sourceElementIndex } = draggingElementInfo;
+         if (sourceRowId === targetRowId) {
+            storePreviousState();
+            setCanvasRows(prevRows => prevRows.map(r => {
+                if (r.id === sourceRowId) {
+                    const newElements = [...r.elements];
+                    const [draggedItem] = newElements.splice(sourceElementIndex, 1);
+                    newElements.push(draggedItem); 
+                    return {...r, elements: newElements};
+                }
+                return r;
+            }));
+            toast({ title: "Element Moved", description: "Element moved to the end of the row." });
+         }
       }
     } catch (error) {
       console.error("Error processing drop data:", error);
-      toast({ title: "Drop Error", description: "Could not add element.", variant: "destructive" });
+      toast({ title: "Drop Error", description: "Could not add or move element.", variant: "destructive" });
     }
+    setDraggingElementInfo(null);
+    setDragOverElementInfo(null);
   };
 
   const handleRowClick = (rowId: string, event: React.MouseEvent) => {
-    if ((event.target as HTMLElement).closest('.element-controls, .canvas-element-content')) {
+    if ((event.target as HTMLElement).closest('.element-controls, .canvas-element-content, [draggable="true"]')) {
       return;
     }
     setSelectedRowId(rowId);
+    setSelectedElementId(null); // Deselect element when row is clicked
+  };
+
+  const handleElementDivClick = (rowId: string, elementId: string, event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation(); // Prevent row click from firing
+    setSelectedRowId(rowId);
+    setSelectedElementId(elementId);
   };
 
   const handleChangeRowLayout = (layout: string) => {
@@ -447,6 +625,9 @@ export default function LandingPageGenerator() {
           : row
       )
     );
+    if (selectedElementId === elementId) {
+      setSelectedElementId(null); // Deselect if the deleted element was selected
+    }
     toast({ title: "Element Deleted", description: "The element has been removed." });
   };
 
@@ -455,6 +636,8 @@ export default function LandingPageGenerator() {
     if (!element) return;
 
     storePreviousState();
+    setSelectedRowId(rowId); // Ensure row is also "selected" for context
+    setSelectedElementId(elementId); // Set the element to be edited
 
     if (element.type === 'MarqueeTestimonials') {
       setEditingMarqueeElementId(elementId);
@@ -470,9 +653,31 @@ export default function LandingPageGenerator() {
       setIsEditHeaderModalOpen(true);
     }
      else {
-      toast({ title: "Edit Element", description: `Editing for ${element.name} coming soon!` });
+       if (!['Heading', 'TextBlock', 'Section', 'TestimonialCard', 'FeatureItem', 'LogoCloud', 'Footer', 'Image', 'Button'].includes(element.type)) {
+         toast({ title: "Edit Element", description: `Editing for ${element.name} via modal coming soon! Basic props in panel.` });
+       }
     }
   };
+
+  const handleUpdateSelectedElementData = (dataKey: keyof CanvasElement['data'], value: any) => {
+    if (!selectedElementId || !selectedRowId) return;
+    storePreviousState();
+    setCanvasRows(prevRows =>
+      prevRows.map(row =>
+        row.id === selectedRowId
+          ? {
+              ...row,
+              elements: row.elements.map(el =>
+                el.id === selectedElementId
+                  ? { ...el, data: { ...el.data, [dataKey]: value } }
+                  : el
+              ),
+            }
+          : row
+      )
+    );
+  };
+
 
   const handleUpdateMarqueeData = (elementId: string, updatedData: {reviews: MarqueeReviewType[]}) => {
     setCanvasRows(prevRows => prevRows.map(row => ({
@@ -506,7 +711,7 @@ export default function LandingPageGenerator() {
       )
     })));
   };
-  
+
   const handleUpdateHeaderData = (elementId: string, updatedData: HeaderElementData) => {
      setCanvasRows(prevRows => prevRows.map(row => ({
       ...row,
@@ -521,6 +726,40 @@ export default function LandingPageGenerator() {
 
   const renderCanvasElement = (element: CanvasElement, rowId: string) => {
     const content = () => {
+      const tag = element.data.htmlTag || (element.type === 'Heading' ? 'h1' : 'p');
+      let textClassesArray: string[] = [];
+
+      textClassesArray.push(element.data.textAlign || 'text-left');
+      
+      if (element.data.fontSize) {
+        textClassesArray.push(element.data.fontSize);
+      } else if (tag.startsWith('h')) {
+        if (tag === 'h1') textClassesArray.push("text-4xl");
+        else if (tag === 'h2') textClassesArray.push("text-3xl");
+        else if (tag === 'h3') textClassesArray.push("text-2xl");
+        else if (tag === 'h4') textClassesArray.push("text-xl");
+        else if (tag === 'h5') textClassesArray.push("text-lg");
+        else if (tag === 'h6') textClassesArray.push("text-base");
+      } else {
+        textClassesArray.push("text-base"); 
+      }
+
+      if (tag.startsWith('h')) {
+        textClassesArray.push("font-bold");
+        if (tag === 'h1') textClassesArray.push("my-3");
+        else if (tag === 'h2') textClassesArray.push("my-2.5");
+        else if (tag === 'h3') textClassesArray.push("my-2");
+        else if (tag === 'h4') textClassesArray.push("my-1.5");
+        else if (tag === 'h5') textClassesArray.push("my-1");
+        else if (tag === 'h6') textClassesArray.push("my-1");
+      } else {
+        textClassesArray.push("my-2"); 
+      }
+      
+      const textContent = element.data.text || (element.type === 'Heading' ? "Default Heading" : "Default text block content.");
+      const textClasses = cn(textClassesArray);
+
+
       switch (element.type) {
         case 'MarqueeTestimonials':
           return <MarqueeDemo reviews={element.data.reviews || []} />;
@@ -555,13 +794,26 @@ export default function LandingPageGenerator() {
         case 'HeaderElement':
           return <HeaderElement {...(element.data as HeaderElementData)} />;
         case 'Section':
-           return <div className="p-4 my-2 min-h-[50px] w-full border border-dashed border-neutral-300 rounded-md bg-neutral-50 dark:bg-neutral-800/30 text-neutral-400 flex items-center justify-center">Rendered Section: Add elements inside.</div>;
+           const sectionStyle: React.CSSProperties = {
+            backgroundColor: element.data.backgroundColor || 'transparent',
+           };
+           return (
+             <div
+               style={sectionStyle}
+               className={cn(
+                 "p-4 my-2 min-h-[50px] w-full border border-dashed rounded-md",
+                 element.data.className,
+                 !element.data.backgroundColor ? "border-neutral-300 bg-neutral-50 dark:bg-neutral-800/30" : "border-transparent"
+               )}
+             >
+               <div className={cn("flex items-center justify-center", !element.data.backgroundColor && "text-neutral-400")}>
+                 Section: Add elements inside. (Content goes here)
+               </div>
+             </div>
+           );
         case 'Heading':
-          const { text: headingText = "Default Heading", level: headingLevel = 'h1' } = element.data;
-          const HeadingTag = headingLevel as keyof JSX.IntrinsicElements;
-          return <HeadingTag className="my-2 font-bold">{headingText}</HeadingTag>;
         case 'TextBlock':
-          return <p className="my-2 whitespace-pre-wrap">{element.data.text || "Default text block content."}</p>;
+          return React.createElement(tag, { className: cn("whitespace-pre-wrap", textClasses) }, textContent);
         case 'Image':
           return (
             <div className="my-2">
@@ -599,56 +851,145 @@ export default function LandingPageGenerator() {
           return <div className="p-4 my-2 min-h-[120px] w-full border border-dashed border-neutral-300 rounded-md bg-neutral-50 dark:bg-neutral-800/30 text-neutral-400 flex items-center justify-center">Contact Form Element</div>;
         case 'CtaSection':
           return <div className="p-4 my-2 min-h-[100px] w-full border border-dashed border-neutral-300 rounded-md bg-primary/10 text-neutral-400 flex flex-col items-center justify-center"><h3 className="font-semibold">Call to Action!</h3><p>Placeholder text for CTA.</p><Button variant="default" className="mt-2">Sign Up Now</Button></div>;
+        case 'TestimonialCard':
+          const testimonialData = element.data as TestimonialCardData;
+          return (
+            <Card className="w-full my-2" style={{ backgroundColor: testimonialData.cardBackgroundColor, color: testimonialData.textColor }}>
+              <CardHeader className="flex flex-row items-center gap-3">
+                {testimonialData.avatarUrl && <Avatar><NextImage src={testimonialData.avatarUrl} alt={testimonialData.authorName || 'author'} width={40} height={40} className="rounded-full" data-ai-hint="user avatar" /><AvatarFallback>{testimonialData.authorName?.[0]}</AvatarFallback></Avatar>}
+                <div>
+                  <CardTitle className="text-base">{testimonialData.authorName}</CardTitle>
+                  {testimonialData.authorRole && <CardDescription className="text-xs" style={{ color: testimonialData.textColor ? 'inherit' : undefined, opacity: 0.8 }}>{testimonialData.authorRole}</CardDescription>}
+                </div>
+              </CardHeader>
+              <CardContent>
+                <p className="italic">"{testimonialData.quote}"</p>
+              </CardContent>
+            </Card>
+          );
+        case 'FeatureItem':
+          const featureData = element.data as FeatureItemData;
+          const IconComponent = (LucideIcons as any)[featureData.iconName] || Lightbulb;
+          const alignmentClass = {
+            left: 'text-left items-start',
+            center: 'text-center items-center',
+            right: 'text-right items-end',
+          }[featureData.alignment || 'center'];
+          return (
+            <div className={cn("flex flex-col gap-2 p-4 my-2", alignmentClass)}>
+              <IconComponent className="h-10 w-10 text-primary mb-2" />
+              <h3 className="text-lg font-semibold">{featureData.title}</h3>
+              <p className="text-muted-foreground text-sm">{featureData.description}</p>
+            </div>
+          );
+        case 'LogoCloud':
+          const logoCloudData = element.data as LogoCloudData;
+          const gridColsClass = `grid-cols-${logoCloudData.columns || 4}`;
+          return (
+            <div className="my-4 py-8">
+              {logoCloudData.title && <h3 className="text-xl font-semibold text-center mb-6">{logoCloudData.title}</h3>}
+              <div className={cn("grid gap-8 items-center", gridColsClass)}>
+                {(logoCloudData.logos || []).map(logo => (
+                  logo.href ? (
+                    <a key={logo.id} href={logo.href} target="_blank" rel="noopener noreferrer" className="flex justify-center grayscale opacity-75 hover:grayscale-0 hover:opacity-100 transition-all">
+                      <NextImage src={logo.src} alt={logo.alt} width={120} height={40} className="object-contain" data-ai-hint="company logo" />
+                    </a>
+                  ) : (
+                    <div key={logo.id} className="flex justify-center grayscale opacity-75">
+                      <NextImage src={logo.src} alt={logo.alt} width={120} height={40} className="object-contain" data-ai-hint="company logo" />
+                    </div>
+                  )
+                ))}
+              </div>
+            </div>
+          );
+        case 'Footer':
+          const footerData = element.data as FooterData;
+          return (
+            <footer className={cn("py-8 px-4 md:px-8 mt-10", footerData.backgroundColor || 'bg-muted', footerData.textColor || 'text-muted-foreground')}>
+              <div className="container mx-auto">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-8">
+                  {(footerData.columns || []).map(col => (
+                    <div key={col.id}>
+                      {col.title && <h4 className="font-semibold mb-3 text-sm uppercase tracking-wider" style={{color: footerData.textColor ? 'inherit' : undefined}}>{col.title}</h4>}
+                      <ul className="space-y-2">
+                        {(col.links || []).map(link => (
+                          <li key={link.id}><a href={link.href} className="text-sm hover:underline" style={{color: footerData.textColor ? 'inherit' : undefined, opacity: 0.8}}>{link.text}</a></li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </div>
+                <div className="border-t pt-6 flex flex-col md:flex-row justify-between items-center text-xs" style={{borderColor: footerData.textColor ? 'currentColor' : undefined, opacity: 0.7}}>
+                  <p>{footerData.copyrightText || `© ${new Date().getFullYear()} Your Company`}</p>
+                  {(footerData.socialLinks && footerData.socialLinks.length > 0) && (
+                    <div className="flex space-x-4 mt-4 md:mt-0">
+                      {footerData.socialLinks.map(social => {
+                         let SocialIcon;
+                         switch(social.platform.toLowerCase()) {
+                           case 'twitter': SocialIcon = LucideIcons.Twitter; break;
+                           case 'facebook': SocialIcon = LucideIcons.Facebook; break;
+                           case 'linkedin': SocialIcon = LucideIcons.Linkedin; break;
+                           case 'instagram': SocialIcon = LucideIcons.Instagram; break;
+                           default: SocialIcon = LucideIcons.Link;
+                         }
+                         return <a key={social.platform} href={social.href} target="_blank" rel="noopener noreferrer" aria-label={social.platform} className="hover:opacity-75"><SocialIcon className="h-5 w-5" style={{color: footerData.textColor ? 'inherit' : undefined}} /></a>
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </footer>
+          );
         default:
-          return <div className="my-2 p-2 bg-red-100 text-red-700 rounded-md">Unknown element type: {element.name}</div>;
+          return <div className="my-2 p-2 bg-red-100 text-red-700 rounded-md">Unknown element type: {element.name} ({element.type})</div>;
       }
     };
-    return <div className="canvas-element-content w-full">{content()}</div>;
+    return <div className={cn("canvas-element-content w-full", element.data.cursor)}>{content()}</div>;
   };
 
   const handleCanvasMouseDown = (event: React.MouseEvent<HTMLDivElement>) => {
     const target = event.target as HTMLElement;
-    if (activeCanvasTool === 'pan' && scrollableElementRef.current && !target.closest('.element-controls, .canvas-element-content, button, input, select, textarea, [role="button"]')) {
+    if (activeCanvasTool === 'pan' && scrollAreaRef.current && !target.closest('.element-controls, .canvas-element-content, button, input, select, textarea, [role="button"], [draggable="true"], [data-page-canvas="true"]')) {
       event.preventDefault();
       setIsCanvasPanning(true);
       setPanStartCoords({
         x: event.clientX,
         y: event.clientY,
-        scrollLeft: scrollableElementRef.current.scrollLeft,
-        scrollTop: scrollableElementRef.current.scrollTop,
+        scrollLeft: scrollAreaRef.current.scrollLeft,
+        scrollTop: scrollAreaRef.current.scrollTop,
       });
-      if (canvasRef.current) {
-        canvasRef.current.style.cursor = 'grabbing';
-      }
+      document.body.style.cursor = 'grabbing';
     }
   };
 
   useEffect(() => {
     const handleGlobalMouseMove = (event: MouseEvent) => {
-      if (!isCanvasPanning || !panStartCoords || !scrollableElementRef.current) return;
+      if (!isCanvasPanning || !panStartCoords || !scrollAreaRef.current) return;
       const dx = event.clientX - panStartCoords.x;
       const dy = event.clientY - panStartCoords.y;
-      scrollableElementRef.current.scrollLeft = panStartCoords.scrollLeft - dx;
-      scrollableElementRef.current.scrollTop = panStartCoords.scrollTop - dy;
+      scrollAreaRef.current.scrollLeft = panStartCoords.scrollLeft - dx;
+      scrollAreaRef.current.scrollTop = panStartCoords.scrollTop - dy;
     };
     const handleGlobalMouseUp = () => {
       if (isCanvasPanning) {
         setIsCanvasPanning(false);
-        if (canvasRef.current) {
-            canvasRef.current.style.cursor = activeCanvasTool === 'pan' ? 'grab' : 'default';
-        }
+        document.body.style.cursor = activeCanvasTool === 'pan' ? 'grab' : 'default';
       }
     };
 
     if (isCanvasPanning) {
       document.addEventListener('mousemove', handleGlobalMouseMove);
       document.addEventListener('mouseup', handleGlobalMouseUp);
+    } else {
+       document.body.style.cursor = activeCanvasTool === 'pan' ? 'grab' : 'default';
     }
     return () => {
       document.removeEventListener('mousemove', handleGlobalMouseMove);
       document.removeEventListener('mouseup', handleGlobalMouseUp);
+      document.body.style.cursor = 'default'; // Reset on unmount
     };
-  }, [isCanvasPanning, panStartCoords, activeCanvasTool]);
+  }, [isCanvasPanning, panStartCoords, activeCanvasTool, scrollAreaRef]);
 
 
   const handleUndo = useCallback(() => {
@@ -678,7 +1019,7 @@ export default function LandingPageGenerator() {
     const versionId = uuidv4();
     const timestamp = new Date().toISOString();
     const versionData: ProjectData = {
-      id: versionId, 
+      id: versionId,
       pageTitle,
       canvasRows: deepCopy(canvasRows),
       lastModified: timestamp,
@@ -686,6 +1027,7 @@ export default function LandingPageGenerator() {
       fontFamilyName: propPageFontFamilyName,
       fontFamilyImportUrl: propPageFontFamilyImportUrl,
       bodyBackgroundColor: propBodyBackgroundColor,
+      propPageCursor: propPageCursor,
     };
     try {
       const existingVersionsRaw = localStorage.getItem('landingPageVersions');
@@ -703,7 +1045,7 @@ export default function LandingPageGenerator() {
   };
 
   const handleLivePreview = () => {
-    const previewId = currentProjectId || uuidv4(); 
+    const previewId = currentProjectId || uuidv4();
     const projectData: ProjectData = {
       id: previewId,
       pageTitle: pageTitle,
@@ -713,11 +1055,12 @@ export default function LandingPageGenerator() {
       fontFamilyName: propPageFontFamilyName,
       fontFamilyImportUrl: propPageFontFamilyImportUrl,
       bodyBackgroundColor: propBodyBackgroundColor,
+      propPageCursor: propPageCursor,
     };
     try {
       localStorage.setItem(`project-${previewId}`, JSON.stringify(projectData));
       if (!currentProjectId) {
-        setCurrentProjectId(previewId); 
+        setCurrentProjectId(previewId);
       }
       window.open(`/project/${previewId}`, '_blank');
       toast({title: "Live Preview Opened", description: "Previewing your page in a new tab."});
@@ -730,18 +1073,18 @@ export default function LandingPageGenerator() {
       });
     }
   };
-  
+
   const handlePublish = async () => {
     setPublishStatus('publishing');
-    await new Promise(resolve => setTimeout(resolve, 1000)); 
-  
+    await new Promise(resolve => setTimeout(resolve, 1000));
+
     let projectIdToUse = currentProjectId;
-  
+
     if (!projectIdToUse) {
       projectIdToUse = uuidv4();
-      setCurrentProjectId(projectIdToUse); 
+      setCurrentProjectId(projectIdToUse);
     }
-  
+
     const projectData: ProjectData = {
       id: projectIdToUse,
       pageTitle: pageTitle,
@@ -751,14 +1094,15 @@ export default function LandingPageGenerator() {
       fontFamilyName: propPageFontFamilyName,
       fontFamilyImportUrl: propPageFontFamilyImportUrl,
       bodyBackgroundColor: propBodyBackgroundColor,
+      propPageCursor: propPageCursor,
     };
-  
+
     try {
       localStorage.setItem(`project-${projectIdToUse}`, JSON.stringify(projectData));
-      loadAllProjectsMetadata(); 
+      loadAllProjectsMetadata();
       const url = `${window.location.origin}/project/${projectIdToUse}`;
       setPublishedPageUrl(url);
-      
+
       navigator.clipboard.writeText(url)
         .then(() => {
           toast({
@@ -909,7 +1253,23 @@ export default function LandingPageGenerator() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && originalBodyBackgroundColorRef.current !== null) {
-       document.body.style.backgroundColor = propBodyBackgroundColor || originalBodyBackgroundColorRef.current || '';
+      const dynamicStyleTagId = 'dynamic-body-background-style';
+      let styleTag = document.getElementById(dynamicStyleTagId) as HTMLStyleElement | null;
+
+      if (propBodyBackgroundColor) {
+        if (!styleTag) {
+          styleTag = document.createElement('style');
+          styleTag.id = dynamicStyleTagId;
+          document.head.appendChild(styleTag);
+        }
+        styleTag.innerHTML = `body { background-color: ${propBodyBackgroundColor} !important; }`;
+      } else {
+        if (styleTag) {
+          styleTag.remove(); // Remove the dynamic style
+        }
+        // Restore original only if it was set
+        document.body.style.backgroundColor = originalBodyBackgroundColorRef.current || '';
+      }
     }
   }, [propBodyBackgroundColor]);
 
@@ -922,10 +1282,13 @@ export default function LandingPageGenerator() {
         setCurrentProjectId(projectId);
         setPageTitle(projectData.pageTitle || 'Untitled Project');
         setCanvasRows(projectData.canvasRows || []);
-        
+        setSelectedRowId(null);
+        setSelectedElementId(null);
+
         setPropPageFontFamilyName(projectData.fontFamilyName || googleFonts[0].name);
         setPropPageFontFamilyImportUrl(projectData.fontFamilyImportUrl || googleFonts[0].importUrl);
         setPropPageFillColor(projectData.pageFillColor || undefined);
+        setPropPageCursor(projectData.propPageCursor || undefined);
         setPropBodyBackgroundColor(projectData.bodyBackgroundColor || undefined);
 
         setActiveView('editor');
@@ -940,36 +1303,43 @@ export default function LandingPageGenerator() {
 
   const deleteProjectFromDashboard = (projectId: string) => {
     localStorage.removeItem(`project-${projectId}`);
-    if (currentProjectId === projectId) { 
-      resetEditorState(); 
+    if (currentProjectId === projectId) {
+      resetEditorState();
     }
-    loadAllProjectsMetadata(); 
+    loadAllProjectsMetadata();
     toast({title: "Project Deleted", description: "The project has been removed."});
   };
 
-  const currentPropFillColor = selectedRowId
+  const currentPropFillColor = selectedRowId && !selectedElementId
     ? canvasRows.find(r => r.id === selectedRowId)?.backgroundColor || undefined
-    : propPageFillColor;
-  
-  const currentBodyBackgroundColor = propBodyBackgroundColor;
+    : (selectedElementId && selectedElement?.type !== 'Section' ? undefined : propPageFillColor);
+
 
   const handleFillColorChange = (color: string) => {
-    const newColor = color === '#FFFFFF' && !selectedRowId ? undefined : (color === '#00000000' ? undefined : color) ; 
-    if (selectedRowId) {
+    const newColor = (color === '#FFFFFF' || color === '#00000000' || color === '#000000') ? undefined : color; 
+    if (selectedRowId && !selectedElementId) { // Editing row fill
       setCanvasRows(prevRows =>
         prevRows.map(row =>
           row.id === selectedRowId ? { ...row, backgroundColor: newColor } : row
         )
       );
-    } else {
+    } else if (!selectedRowId && !selectedElementId) { // Editing page canvas fill
       setPropPageFillColor(newColor);
     }
   };
-
+  
   const handleBodyFillColorChange = (color: string) => {
-    const newColor = color === '#00000000' ? undefined : color; 
+    const newColor = (color === '#FFFFFF' || color === '#00000000' || color === '#000000') ? undefined : color;
     setPropBodyBackgroundColor(newColor);
   };
+
+  const toggleGridVisibility = () => {
+    setIsGridVisible(prev => !prev);
+  };
+  
+  const genericFillLabel = selectedElementId
+    ? (selectedElement?.type === 'Section' ? "Fill (N/A - Use Section Properties)" : "Element Fill (TBD)")
+    : (selectedRowId ? "Row Background" : "Page Canvas Background");
 
 
   if (!hasMounted) {
@@ -1025,7 +1395,7 @@ export default function LandingPageGenerator() {
               </div>
             ))}
           </aside>
-          <main className="flex-1 overflow-y-auto p-6 md:p-8 lg:p-10 bg-background">
+          <main className="flex-1 overflow-y-auto p-6 md:p-8 lg:p-10">
             {activeSettingsSection === 'general' && (
               <div className="max-w-2xl mx-auto">
                 <h1 className="text-2xl font-semibold text-foreground mb-6">General Settings</h1>
@@ -1186,8 +1556,24 @@ export default function LandingPageGenerator() {
   }
 
 
+  const pageCanvasStyle: React.CSSProperties = {
+      width: `${activeBreakpoint.width}px`,
+      minHeight: 'max(70vh, 500px)',
+      transform: `scale(${canvasZoom})`,
+      transformOrigin: 'center center',
+      fontFamily: googleFonts.find(f => f.name === propPageFontFamilyName)?.family || 'sans-serif',
+      backgroundColor: propPageFillColor || 'transparent',
+  };
+
+  if (isGridVisible) {
+      pageCanvasStyle.backgroundImage = 'radial-gradient(hsl(var(--muted-foreground)) 0.5px, transparent 0.5px)';
+      pageCanvasStyle.backgroundSize = '15px 15px';
+      pageCanvasStyle.backgroundPosition = '-7px -7px';
+  }
+
+
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden" style={{ backgroundColor: propBodyBackgroundColor || 'transparent' }}>
+    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
       <header className="p-2 border-b border-border flex-shrink-0 flex justify-between items-center bg-card shadow-sm h-14">
         <div className="flex items-center gap-1">
           <DropdownMenu>
@@ -1276,7 +1662,7 @@ export default function LandingPageGenerator() {
       >
         <ResizablePanel
             defaultSize={14}
-            minSize={isMobile ? 15 : 5}
+            minSize={isMobile ? 15 : 10}
             maxSize={isMobile ? 40 : 25}
             collapsible={true}
             collapsedSize={0}
@@ -1305,8 +1691,10 @@ export default function LandingPageGenerator() {
                               <div
                                 key={el.name}
                                 draggable
-                                onDragStart={(e) => handleDragStart(e, el.name)}
-                                onClick={() => handleElementClick(el)}
+                                onDragStart={(e) => {
+                                  e.dataTransfer.setData("application/json", JSON.stringify({ type: 'ADD_ELEMENT', elementName: el.name }));
+                                }}
+                                onClick={() => handleElementClickInPalette(el)}
                                 className="flex items-center p-2 rounded-md hover:bg-muted/50 cursor-grab active:cursor-grabbing"
                                 title={`Drag to add ${el.name}`}
                               >
@@ -1330,53 +1718,45 @@ export default function LandingPageGenerator() {
 
         <ResizableHandle withHandle />
 
-        <ResizablePanel defaultSize={68} minSize={30}> 
+        <ResizablePanel defaultSize={68} minSize={30}>
           <div
-            className="h-full flex flex-col overflow-hidden relative" 
-            ref={canvasRef}
+            className="h-full flex flex-col overflow-hidden relative"
             onMouseDown={handleCanvasMouseDown}
           >
             <ScrollArea
-              className="flex-grow h-full" 
-              style={{ cursor: activeCanvasTool === 'pan' ? 'grab' : 'default' }}
-              
+              className="flex-grow"
+              style={{ cursor: activeCanvasTool === 'pan' ? (isCanvasPanning ? 'grabbing' : 'grab') : 'default' }}
+              ref={scrollAreaRef}
             >
-              
-              <div className="grid place-items-center h-full w-full" 
+              <div
+                className="flex items-center justify-center min-h-full min-w-full" 
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
-                    e.stopPropagation(); 
-                    if ((e.target as HTMLElement).closest('[data-page-canvas="true"]')) {
-                      handleDropOnCanvas(e, undefined);
-                    }
+                    e.stopPropagation();
+                    handleDropOnCanvas(e, undefined);
                 }}
               >
                 <div
                   data-page-canvas="true"
                   className={cn(
-                    "transition-all duration-300 shadow-xl relative p-4 md:p-8", 
-                    canvasRows.length === 0 && "flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/50"
+                    "transition-all duration-300 shadow-xl relative p-4 md:p-8",
+                    canvasRows.length === 0 && "flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/50",
+                    propPageCursor // Apply page cursor if set
                   )}
-                  style={{
-                      width: `${activeBreakpoint.width}px`,
-                      minHeight: 'max(70vh, 500px)',
-                      transform: `scale(${canvasZoom})`,
-                      transformOrigin: 'center center',
-                      fontFamily: googleFonts.find(f => f.name === propPageFontFamilyName)?.family || 'sans-serif',
-                      backgroundColor: propPageFillColor || 'transparent',
-                  }}
+                  style={pageCanvasStyle}
                   onDragOver={(e) => {e.preventDefault(); e.stopPropagation();}}
                   onDrop={(e) => {e.stopPropagation(); handleDropOnCanvas(e, undefined);}}
+                  onClick={() => { setSelectedRowId(null); setSelectedElementId(null); }}
                 >
                   {canvasRows.length > 0 ? (
-                    <div className="max-w-full mx-auto p-1"> 
+                    <div className="max-w-full mx-auto">
                       {canvasRows.map((row) => (
                         <div
                           key={row.id}
                           className={cn(
-                            "grid gap-4 my-0 p-2 border-2 rounded-md min-h-[60px] w-full", 
+                            "grid gap-4 my-0 p-2 border-2 rounded-md min-h-[60px] w-full",
                             row.layout,
-                            selectedRowId === row.id ? "border-primary ring-2 ring-primary ring-offset-2 dark:ring-offset-background" : "border-transparent hover:border-muted-foreground/30"
+                            selectedRowId === row.id && !selectedElementId ? "border-primary ring-2 ring-primary ring-offset-2 dark:ring-offset-background" : "border-transparent hover:border-muted-foreground/30"
                           )}
                           style={{ backgroundColor: row.backgroundColor || 'transparent' }}
                           onClick={(e) => handleRowClick(row.id, e)}
@@ -1390,18 +1770,63 @@ export default function LandingPageGenerator() {
                               </div>
                             ))
                           }
-                          {row.elements.map((el) => (
-                            <div key={el.id} className="relative group/element p-1 border border-transparent hover:border-primary/50 w-full">
-                               <div className="absolute top-0 right-0 z-20 flex items-center gap-1 bg-card p-1 rounded-bl-md shadow-lg element-controls opacity-0 group-hover/element:opacity-100 transition-opacity duration-200">
-                                 <span className="text-xs px-1.5 py-0.5 bg-primary/10 text-primary rounded-l-md flex-shrink min-w-0 truncate max-w-[100px] sm:max-w-[150px]" title={el.name}>{el.name}</span>
+                          {row.elements.map((el, index) => {
+                            const isDraggingThis = draggingElementInfo?.elementId === el.id;
+                            const isDragOverThis = dragOverElementInfo?.elementId === el.id && dragOverElementInfo?.rowId === row.id && draggingElementInfo && draggingElementInfo.rowId === row.id;
+                            const isSelected = selectedElementId === el.id;
+                            const elementCursorClass = el.data.cursor;
+                            return (
+                            <div 
+                              key={el.id} 
+                              draggable={true}
+                              onDragStart={(e) => handleElementDragStart(e, row.id, el.id, index)}
+                              onDragEnd={handleElementDragEnd}
+                              onDragOver={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (draggingElementInfo && draggingElementInfo.rowId === row.id) {
+                                    e.dataTransfer.dropEffect = 'move';
+                                    if (draggingElementInfo.elementId !== el.id) {
+                                        setDragOverElementInfo({ rowId: row.id, elementId: el.id, elementIndex: index });
+                                    } else {
+                                        setDragOverElementInfo(null);
+                                    }
+                                } else {
+                                    e.dataTransfer.dropEffect = 'none';
+                                    setDragOverElementInfo(null);
+                                }
+                              }}
+                              onDragLeave={handleElementDragLeave}
+                              onDrop={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (draggingElementInfo && draggingElementInfo.rowId === row.id && draggingElementInfo.elementId !== el.id) {
+                                    handleElementDropOnElement(e, row.id, el.id, index);
+                                }
+                                setDragOverElementInfo(null);
+                              }}
+                              onClick={(e) => handleElementDivClick(row.id, el.id, e)}
+                              className={cn(
+                                "relative group/element p-1 border w-full transition-all duration-150 ease-in-out",
+                                isSelected ? "border-blue-500 ring-1 ring-blue-500" : "border-transparent hover:border-primary/50",
+                                { "opacity-30": isDraggingThis },
+                                { "border-blue-500 border-dashed ring-1 ring-blue-500 bg-blue-500/5": isDragOverThis && !isDraggingThis },
+                                isDraggingThis ? 'cursor-grabbing' : elementCursorClass
+                              )}
+                            >
+                               <div className="absolute top-0 right-0 z-20 flex items-center gap-0.5 bg-card p-0.5 rounded-bl-md shadow-lg element-controls opacity-0 group-hover/element:opacity-100 transition-opacity duration-200">
+                                 <Button variant="ghost" size="icon" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground cursor-move flex-shrink-0" title="Drag to reorder">
+                                   <GripVertical className="h-3.5 w-3.5" />
+                                 </Button>
+                                 <span className="text-xs px-1 py-0.5 bg-primary/10 text-primary rounded-l-md flex-shrink min-w-0 truncate max-w-[80px] sm:max-w-[120px]" title={el.name}>{el.name}</span>
                                  <Button variant="ghost" size="icon" className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground flex-shrink-0" onClick={() => handleEditElement(row.id, el.id)} title="Edit Element"> <Edit3 className="h-3.5 w-3.5" /></Button>
                                  <Button variant="ghost" size="icon" className="h-6 w-6 p-0 text-destructive hover:bg-destructive/10 flex-shrink-0" onClick={() => handleDeleteElement(row.id, el.id)} title="Delete Element"> <Trash2 className="h-3.5 w-3.5" /></Button>
                               </div>
-                              <div className="mt-8 w-full"> 
+                              <div className="mt-8 w-full">
                                  {renderCanvasElement(el, row.id)}
                               </div>
                             </div>
-                          ))}
+                          )})}
                         </div>
                       ))}
                     </div>
@@ -1415,31 +1840,53 @@ export default function LandingPageGenerator() {
                 </div>
               </div>
             </ScrollArea>
-            
+
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-30">
               <div className="flex items-center gap-1 p-1.5 bg-zinc-800 text-zinc-300 rounded-lg shadow-xl">
                 <Button
                     variant="ghost"
                     size="icon"
                     title="Select Tool (V)"
-                    onClick={() => {setActiveCanvasTool('select'); if(canvasRef.current) canvasRef.current.style.cursor = 'default';}}
+                    onClick={() => {setActiveCanvasTool('select');}}
                     className={cn("h-8 w-8 hover:bg-zinc-700", activeCanvasTool === 'select' && "bg-zinc-600 text-white")}
                 > <MousePointer className="h-4 w-4" /></Button>
                 <Button
                     variant="ghost"
                     size="icon"
                     title="Pan Tool (H)"
-                    onClick={() => {setActiveCanvasTool('pan'); if(canvasRef.current) canvasRef.current.style.cursor = 'grab';}}
+                    onClick={() => {setActiveCanvasTool('pan');}}
                     className={cn("h-8 w-8 hover:bg-zinc-700", activeCanvasTool === 'pan' && "bg-zinc-600 text-white")}
-                > <Hand className="h-4 w-4" /></Button>
+                > <HandIcon className="h-4 w-4" /></Button>
                 <Separator orientation="vertical" className="h-6 bg-zinc-700" />
-                <Button variant="ghost" size="icon" title="Canvas Dark Mode (TBD)" onClick={() => toast({title: "Toggle Dark Mode: TBD"})} className="h-8 w-8 hover:bg-zinc-700"> <CircleIcon className="h-4 w-4" /></Button>
-                <Button variant="ghost" size="icon" title="Canvas Light Mode (TBD)" onClick={() => toast({title: "Toggle Light Mode: TBD"})} className="h-8 w-8 hover:bg-zinc-700"> <SunIcon className="h-4 w-4" /></Button>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    title="Set Dark Mode" 
+                    onClick={() => setTheme('dark')} 
+                    className={cn("h-8 w-8 hover:bg-zinc-700", theme === 'dark' && "bg-zinc-600 text-white")}> 
+                    <CircleIcon className="h-4 w-4" />
+                </Button>
+                <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    title="Set Light Mode" 
+                    onClick={() => setTheme('light')} 
+                    className={cn("h-8 w-8 hover:bg-zinc-700", theme === 'light' && "bg-zinc-600 text-white")}> 
+                    <SunIcon className="h-4 w-4" />
+                </Button>
                 <Separator orientation="vertical" className="h-6 bg-zinc-700" />
-                <Button variant="ghost" size="icon" title="Toggle Grid (TBD)" onClick={() => toast({title: "Toggle Grid: TBD"})} className="h-8 w-8 hover:bg-zinc-700"> <GridIconLucide className="h-4 w-4" /></Button>
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  title="Toggle Grid" 
+                  onClick={toggleGridVisibility} 
+                  className={cn("h-8 w-8 hover:bg-zinc-700", isGridVisible && "bg-zinc-600 text-white")}
+                >
+                  <GridIconLucide className="h-4 w-4" />
+                </Button>
                 <Separator orientation="vertical" className="h-6 bg-zinc-700" />
                 <Select
-                    value={Math.round(canvasZoom * 100) + '%'}
+                    value={`${Math.round(canvasZoom * 100)}%`}
                     onValueChange={(val) => {
                         const numVal = parseInt(val.replace('%','')) / 100;
                         if(!isNaN(numVal)) setCanvasZoom(numVal);
@@ -1458,10 +1905,12 @@ export default function LandingPageGenerator() {
           </div>
         </ResizablePanel>
 
+        <ResizableHandle withHandle />
+        
         <ResizablePanel
-          defaultSize={18} 
-          minSize={15} 
-          maxSize={isMobile ? 40 : 30} 
+          defaultSize={18}
+          minSize={15}
+          maxSize={isMobile ? 40 : 30}
           collapsible={true}
           collapsedSize={0}
           className={cn("bg-card", isMobile ? "border-t" : "border-l")}
@@ -1475,7 +1924,109 @@ export default function LandingPageGenerator() {
               </CardHeader>
               <ScrollArea className="h-full">
                 <div className="p-1">
-                  <Accordion type="multiple" defaultValue={['layout','typography','styles','breakpoint']} className="w-full">
+                  <Accordion type="multiple" defaultValue={['element_specific', 'typography', 'styles', 'layout', 'breakpoint', 'cursor']} className="w-full">
+                     {selectedElement && (selectedElement.type === 'Heading' || selectedElement.type === 'TextBlock') && (
+                        <AccordionItem value="element_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div>
+                              <Label htmlFor="elementTextContent" className="text-xs">Text Content</Label>
+                              <Textarea
+                                id="elementTextContent"
+                                value={selectedElement.data.text || ''}
+                                onChange={(e) => handleUpdateSelectedElementData('text', e.target.value)}
+                                className="h-20 mt-1 bg-background text-xs"
+                                disabled={!selectedElementId}
+                              />
+                            </div>
+                            <div>
+                              <Label htmlFor="elementHtmlTag" className="text-xs">HTML Tag</Label>
+                              <Select
+                                value={selectedElement.data.htmlTag || (selectedElement.type === 'Heading' ? 'h1' : 'p')}
+                                onValueChange={(value) => handleUpdateSelectedElementData('htmlTag', value as HtmlTag)}
+                                disabled={!selectedElementId}
+                              >
+                                <SelectTrigger id="elementHtmlTag" className="h-8 mt-1 bg-background text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {htmlTagOptions.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                             <div>
+                              <Label htmlFor="elementFontSize" className="text-xs">Font Size</Label>
+                              <Select
+                                value={selectedElement.data.fontSize || DEFAULT_FONT_SIZE_VALUE}
+                                onValueChange={(value) => {
+                                  const newFontSize = value === DEFAULT_FONT_SIZE_VALUE ? undefined : (value as TailwindFontSize);
+                                  handleUpdateSelectedElementData('fontSize', newFontSize);
+                                }}
+                                disabled={!selectedElementId}
+                              >
+                                <SelectTrigger id="elementFontSize" className="h-8 mt-1 bg-background text-xs">
+                                  <SelectValue placeholder="Default based on tag" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value={DEFAULT_FONT_SIZE_VALUE} className="text-xs">Default based on Tag</SelectItem>
+                                  {fontSizeOptions.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label className="text-xs block mb-1.5">Text Alignment</Label>
+                              <div className="flex space-x-1">
+                                {textAlignOptions.map(opt => (
+                                  <Button
+                                    key={opt.value}
+                                    variant={selectedElement.data.textAlign === opt.value ? 'secondary' : 'outline'}
+                                    size="icon"
+                                    className="h-8 w-8"
+                                    onClick={() => handleUpdateSelectedElementData('textAlign', opt.value as TextAlignment)}
+                                    title={opt.label}
+                                    disabled={!selectedElementId}
+                                  >
+                                    <opt.icon className="h-4 w-4" />
+                                  </Button>
+                                ))}
+                              </div>
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                      {selectedElement && selectedElement.type === 'Section' && (
+                        <AccordionItem value="section_styles">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">Section Styles</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div className="flex items-center gap-2">
+                              <Label htmlFor="sectionFillColor" className="text-xs flex-1">
+                                Section Background
+                              </Label>
+                              <Input
+                                id="sectionFillColor"
+                                type="color"
+                                value={selectedElement.data.backgroundColor || '#FFFFFF'}
+                                onChange={(e) => handleUpdateSelectedElementData('backgroundColor', e.target.value === '#FFFFFF' || e.target.value === '#000000' ? undefined : e.target.value)}
+                                className="h-8 w-10 p-0.5 bg-background"
+                              />
+                            </div>
+                             <div>
+                                <Label htmlFor="sectionClassName" className="text-xs">Custom CSS Classes</Label>
+                                <Input
+                                  id="sectionClassName"
+                                  value={selectedElement.data.className || ''}
+                                  onChange={(e) => handleUpdateSelectedElementData('className', e.target.value)}
+                                  placeholder="e.g., py-12 md:py-20"
+                                  className="h-8 mt-1 bg-background text-xs"
+                                />
+                              </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
                     <AccordionItem value="template">
                       <AccordionTrigger className="text-sm px-2 py-2.5">Template</AccordionTrigger>
                       <AccordionContent className="px-2 pb-2 space-y-2">
@@ -1515,10 +2066,10 @@ export default function LandingPageGenerator() {
                     <AccordionItem value="layout">
                       <AccordionTrigger className="text-sm px-2 py-2.5">Layout</AccordionTrigger>
                       <AccordionContent className="px-2 pb-3 space-y-3">
-                        <p className="text-xs text-muted-foreground">Row Columns (Selected: {selectedRowId ? canvasRows.find(r=>r.id === selectedRowId)?.layout.split('-')[2] || 'N/A' : 'None'})</p>
+                        <p className="text-xs text-muted-foreground">Row Columns (Selected: {selectedRowId && !selectedElementId ? canvasRows.find(r=>r.id === selectedRowId)?.layout.split('-')[2] || 'N/A' : 'None'})</p>
                         <div className="flex gap-1.5">
                           {['1', '2', '3', '4'].map(col => (
-                            <Button key={col} variant="outline" size="xs" className="flex-1" onClick={() => handleChangeRowLayout(`grid-cols-${col}`)} disabled={!selectedRowId}>{col} Col</Button>
+                            <Button key={col} variant="outline" size="xs" className="flex-1" onClick={() => handleChangeRowLayout(`grid-cols-${col}`)} disabled={!selectedRowId || !!selectedElementId}>{col} Col</Button>
                           ))}
                         </div>
                          <Button variant="outline" size="sm" className="w-full justify-between text-xs">Add Layout Option <Plus className="h-3 w-3" /></Button>
@@ -1529,10 +2080,10 @@ export default function LandingPageGenerator() {
                       <AccordionContent className="px-2 pb-3 space-y-3">
                          <div className="flex items-center gap-2">
                             <Label htmlFor="prop-font-base" className="text-xs flex-1">Base</Label>
-                            <Input id="prop-font-base" type="number" value={propBaseFontSize} onChange={e=>setPropBaseFontSize(Number(e.target.value))} className="h-8 w-16 bg-background text-xs"/>
+                            <Input id="prop-font-base" type="number" value={propBaseFontSize} onChange={e=>setPropBaseFontSize(Number(e.target.value))} className="h-8 w-16 bg-background text-xs" disabled={!!selectedElementId}/>
                             <span className="text-xs text-muted-foreground">PX</span>
-                            <Button variant="outline" size="icon" className="h-7 w-7"><Minus className="h-3 w-3"/></Button>
-                            <Button variant="outline" size="icon" className="h-7 w-7"><Plus className="h-3 w-3"/></Button>
+                            <Button variant="outline" size="icon" className="h-7 w-7" disabled={!!selectedElementId}><Minus className="h-3 w-3"/></Button>
+                            <Button variant="outline" size="icon" className="h-7 w-7" disabled={!!selectedElementId}><Plus className="h-3 w-3"/></Button>
                         </div>
                         <div>
                           <Label htmlFor="propPageFontFamily" className="text-xs">Font Family</Label>
@@ -1545,6 +2096,7 @@ export default function LandingPageGenerator() {
                                 setPropPageFontFamilyImportUrl(selectedFont.importUrl);
                               }
                             }}
+                            disabled={!!selectedElementId}
                           >
                             <SelectTrigger id="propPageFontFamily" className="h-8 mt-1 bg-background text-xs">
                               <SelectValue placeholder="Select a font" />
@@ -1561,11 +2113,46 @@ export default function LandingPageGenerator() {
                       </AccordionContent>
                     </AccordionItem>
                      <AccordionItem value="cursor">
-                      <AccordionTrigger className="text-sm px-2 py-2.5">Cursor</AccordionTrigger>
-                      <AccordionContent className="px-2 pb-3">
-                         <Button variant="outline" size="sm" className="w-full justify-between text-xs">Add Cursor Style <Plus className="h-3 w-3" /></Button>
-                      </AccordionContent>
-                    </AccordionItem>
+                        <AccordionTrigger className="text-sm px-2 py-2.5 flex items-center">
+                          <MousePointer className="mr-2 h-4 w-4 text-muted-foreground"/> Cursor
+                        </AccordionTrigger>
+                        <AccordionContent className="px-2 pb-3 space-y-3">
+                          <div className="space-y-1">
+                            <Label htmlFor="prop-cursor" className="text-xs">
+                              {selectedElementId ? "Element Cursor" : "Page Cursor"}
+                            </Label>
+                            <Select
+                              value={
+                                selectedElementId && selectedElement?.data.cursor
+                                  ? selectedElement.data.cursor
+                                  : !selectedElementId && propPageCursor
+                                  ? propPageCursor
+                                  : DEFAULT_CURSOR_VALUE
+                              }
+                              onValueChange={(value) => {
+                                const actualValue = value === DEFAULT_CURSOR_VALUE ? undefined : value;
+                                if (selectedElementId) {
+                                  handleUpdateSelectedElementData('cursor', actualValue);
+                                } else {
+                                  setPropPageCursor(actualValue);
+                                }
+                              }}
+                            >
+                              <SelectTrigger id="prop-cursor" className="h-8 mt-1 bg-background text-xs">
+                                <SelectValue placeholder="Default (Auto)" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {cursorOptions.map(opt => (
+                                  <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {selectedElementId ? "Sets cursor for this element. Clears to inherit from page or browser default." : "Sets cursor for the entire page. Affects elements without their own cursor style."}
+                            </p>
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
                      <AccordionItem value="effects">
                       <AccordionTrigger className="text-sm px-2 py-2.5">Effects</AccordionTrigger>
                       <AccordionContent className="px-2 pb-3">
@@ -1577,30 +2164,29 @@ export default function LandingPageGenerator() {
                       <AccordionContent className="px-2 pb-3 space-y-3">
                          <div className="flex items-center gap-2">
                             <Label htmlFor="prop-fill" className="text-xs flex-1">
-                              {selectedRowId ? "Row Fill" : "Canvas Fill"}
+                              {genericFillLabel}
                             </Label>
-                            <Input 
-                              id="prop-fill" 
-                              type="color" 
-                              value={currentPropFillColor || '#FFFFFF'} 
-                              onChange={e => handleFillColorChange(e.target.value)} 
+                            <Input
+                              id="prop-fill"
+                              type="color"
+                              value={currentPropFillColor || '#FFFFFF'}
+                              onChange={e => handleFillColorChange(e.target.value)}
                               className="h-8 w-10 p-0.5 bg-background"
+                              disabled={!!selectedElementId && selectedElement?.type !== 'Section'}
                             />
                          </div>
-                         {!selectedRowId && (
-                            <div className="flex items-center gap-2">
-                              <Label htmlFor="prop-body-bg-fill" className="text-xs flex-1">
+                        <div className="flex items-center gap-2">
+                            <Label htmlFor="prop-body-bg-fill" className="text-xs flex-1">
                                 Outer Page Background
-                              </Label>
-                              <Input 
-                                id="prop-body-bg-fill" 
-                                type="color" 
-                                value={currentBodyBackgroundColor || '#000000'} 
-                                onChange={e => handleBodyFillColorChange(e.target.value)} 
+                            </Label>
+                            <Input
+                                id="prop-body-bg-fill"
+                                type="color"
+                                value={propBodyBackgroundColor || '#FFFFFF'}
+                                onChange={e => handleBodyFillColorChange(e.target.value)}
                                 className="h-8 w-10 p-0.5 bg-background"
-                              />
-                            </div>
-                          )}
+                            />
+                        </div>
                          <div>
                             <Label htmlFor="prop-overflow" className="text-xs">Overflow</Label>
                             <Select value={propOverflow} onValueChange={setPropOverflow}>

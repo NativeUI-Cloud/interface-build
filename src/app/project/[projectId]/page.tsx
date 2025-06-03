@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import type { CanvasRow, CanvasElement, HeroVideoData, BentoFeature, AnimatedListItem as AnimatedListItemType, HeaderElementData, ProjectData } from '@/lib/types';
+import type { CanvasRow, CanvasElement, HeroVideoData, BentoFeature, AnimatedListItem as AnimatedListItemType, HeaderElementData, ProjectData, HtmlTag, TailwindFontSize, TextAlignment } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 // Import the same display components used in LandingPageGenerator
@@ -91,6 +91,39 @@ export default function PublishedProjectPage() {
   }, [projectId]);
 
   const renderElementContent = (element: CanvasElement) => {
+    const tag = element.data.htmlTag || (element.type === 'Heading' ? 'h1' : 'p');
+    const textContent = element.data.text || (element.type === 'Heading' ? "Default Heading" : "Default text block content.");
+    
+    let textClassesArray: string[] = [];
+    textClassesArray.push(element.data.textAlign || 'text-left');
+
+    if (element.data.fontSize) {
+      textClassesArray.push(element.data.fontSize);
+    } else if (tag.startsWith('h')) {
+      if (tag === 'h1') textClassesArray.push("text-4xl");
+      else if (tag === 'h2') textClassesArray.push("text-3xl");
+      else if (tag === 'h3') textClassesArray.push("text-2xl");
+      else if (tag === 'h4') textClassesArray.push("text-xl");
+      else if (tag === 'h5') textClassesArray.push("text-lg");
+      else if (tag === 'h6') textClassesArray.push("text-base");
+    } else {
+      textClassesArray.push("text-base");
+    }
+
+    if (tag.startsWith('h')) {
+      textClassesArray.push("font-bold");
+      if (tag === 'h1') textClassesArray.push("my-3");
+      else if (tag === 'h2') textClassesArray.push("my-2.5");
+      else if (tag === 'h3') textClassesArray.push("my-2");
+      else if (tag === 'h4') textClassesArray.push("my-1.5");
+      else if (tag === 'h5') textClassesArray.push("my-1");
+      else if (tag === 'h6') textClassesArray.push("my-1");
+    } else {
+      textClassesArray.push("my-2");
+    }
+    
+    const textClasses = cn(textClassesArray);
+
     switch (element.type) {
       case 'MarqueeTestimonials':
         return <MarqueeDemo reviews={element.data.reviews || []} />;
@@ -125,13 +158,29 @@ export default function PublishedProjectPage() {
       case 'HeaderElement': 
         return <HeaderElement {...(element.data as HeaderElementData)} />;
       case 'Section':
-         return <div className="p-4 my-2 min-h-[50px] w-full border border-dashed border-neutral-300 rounded-md bg-neutral-50 dark:bg-neutral-800/30 text-neutral-400 flex items-center justify-center">Rendered Section</div>;
+         const sectionStyle: React.CSSProperties = {
+           backgroundColor: element.data.backgroundColor || 'transparent',
+         };
+         return (
+           <div 
+             style={sectionStyle} 
+             className={cn(
+               "p-4 my-2 min-h-[50px] w-full rounded-md", 
+               element.data.className, 
+               !element.data.backgroundColor && "border border-dashed border-muted-foreground/20" 
+             )}
+           >
+            {(element.data.elements || []).length === 0 && (
+              <div className="text-center text-muted-foreground/50 text-sm italic">
+                 Section Area
+              </div>
+            )}
+            {/* If sections could contain child elements, they would be rendered here based on projectData structure */}
+           </div>
+         );
       case 'Heading':
-        const { text: headingText = "Default Heading", level: headingLevel = 'h1' } = element.data;
-        const HeadingTag = headingLevel as keyof JSX.IntrinsicElements;
-        return <HeadingTag className="my-2 font-bold">{headingText}</HeadingTag>;
       case 'TextBlock':
-        return <p className="my-2 whitespace-pre-wrap">{element.data.text || "Default text block content."}</p>;
+        return React.createElement(tag, { className: cn("whitespace-pre-wrap", textClasses) }, textContent);
       case 'Image':
         return (
           <div className="my-2">
