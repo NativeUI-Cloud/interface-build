@@ -1,4 +1,3 @@
-
 import type React from 'react';
 
 export interface ToolConfigBase {
@@ -299,11 +298,11 @@ export interface NavLinkItem {
   submenu?: NavLinkItem[];
 }
 
-export type HeaderLayout = 
-  | 'logo-left-nav-right' 
-  | 'logo-center-nav-split' 
-  | 'logo-center-nav-below' 
-  | 'nav-left-logo-center-actions-right' 
+export type HeaderLayout =
+  | 'logo-left-nav-right'
+  | 'logo-center-nav-split'
+  | 'logo-center-nav-below'
+  | 'nav-left-logo-center-actions-right'
   | 'logo-left-nav-left-actions-right';
 
 export interface HeaderElementData {
@@ -328,8 +327,8 @@ export interface HeaderTemplate {
 
 
 export type HtmlTag = 'p' | 'h1' | 'h2' | 'h3' | 'h4' | 'h5' | 'h6';
-export type TailwindFontSize = 
-  | 'text-xs' | 'text-sm' | 'text-base' | 'text-lg' | 'text-xl' 
+export type TailwindFontSize =
+  | 'text-xs' | 'text-sm' | 'text-base' | 'text-lg' | 'text-xl'
   | 'text-2xl' | 'text-3xl' | 'text-4xl' | 'text-5xl' | 'text-6xl';
 export type TextAlignment = 'text-left' | 'text-center' | 'text-right';
 
@@ -340,8 +339,8 @@ export interface TestimonialCardData {
   authorName: string;
   authorRole?: string;
   avatarUrl?: string;
-  cardBackgroundColor?: string;
-  textColor?: string;
+  cardBackgroundColor?: string; // User-defined color for this specific card
+  textColor?: string; // User-defined text color for this specific card
 }
 
 export interface FeatureItemData {
@@ -381,12 +380,115 @@ export interface FooterData {
   socialLinks?: { platform: 'twitter' | 'facebook' | 'linkedin' | 'instagram' | string; href: string }[];
 }
 
+export interface AnnouncementBarData {
+  text?: string;
+  linkText?: string;
+  linkHref?: string;
+  variant?: 'base' | 'fixed' | 'floating';
+  dismissible?: boolean;
+  backgroundColor?: string; // Tailwind class or hex color
+  textColor?: string;       // Tailwind class or hex color
+  linkColor?: string;         // Tailwind class or hex color for the link
+  // Optional specific button colors if needed, otherwise derive from textColor/bgColor
+  buttonBackgroundColor?: string;
+  buttonTextColor?: string;
+  buttonBorderColor?: string;
+}
+
+export interface ConnectWalletButtonData {
+    text?: string;
+    className?: string;
+}
+
+export interface NftDisplayCardData {
+    imageUrl?: string;
+    name?: string;
+    collection?: string;
+    price?: string;
+    'data-ai-hint'?: string;
+}
+
+export interface TokenInfoDisplayData {
+    tokenSymbol?: string;
+    price?: string;
+    marketCap?: string;
+}
+
+export interface RoadmapPhase {
+    id: string;
+    title: string;
+    description: string;
+}
+export interface RoadmapTimelineData {
+    phases: RoadmapPhase[];
+}
+
+export type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+export interface BadgeElementData {
+  text?: string;
+  variant?: BadgeVariant;
+}
+
+export interface SeparatorElementData {
+  orientation?: "horizontal" | "vertical";
+  decorative?: boolean;
+}
+
+export interface ProgressElementData {
+  value?: number; // 0-100
+  indicatorColor?: string; // Tailwind class
+  backgroundColor?: string; // Tailwind class
+}
+
+export interface SkeletonElementData {
+  width?: string; // e.g., 'w-full', 'w-1/2', 'w-32'
+  height?: string; // e.g., 'h-4', 'h-32'
+  className?: string; // For additional custom styling like rounded corners
+}
+
+export interface AlertElementData {
+  title?: string;
+  description?: string;
+  variant?: 'default' | 'destructive';
+  iconName?: string; // Optional: lucide icon name
+}
+
+// Web3 / API Specific Elements
+export interface ApiDataItem {
+  id: string;
+  key: string;
+  value: string;
+}
+export interface ApiDataDisplayData {
+  title?: string;
+  items: ApiDataItem[];
+  layout?: 'list' | 'table'; // Potential future enhancement
+}
+
+export type TransactionStatus = 'pending' | 'success' | 'failed' | 'unknown';
+export interface TransactionStatusData {
+  status?: TransactionStatus;
+  transactionId?: string;
+  message?: string; // e.g., "Transaction confirmed on block X" or "Error: Insufficient funds"
+}
+
+export type ProposalStatus = 'active' | 'passed' | 'failed' | 'pending' | 'executed';
+export interface GovernanceProposalData {
+  title?: string;
+  proposer?: string;
+  summary?: string;
+  status?: ProposalStatus;
+  endDate?: string; // ISO string or human-readable
+  votesFor?: string; // e.g., "1.2M XYZ" or percentage
+  votesAgainst?: string;
+}
+
 
 export interface WebElementDefinition {
   name: string;
   type: string;
   previewComponent: React.ReactNode;
-  initialData: Partial<CanvasElement['data']>; // Use Partial here
+  initialData: Partial<CanvasElement['data']>;
   icon?: React.ElementType;
   category: string;
 }
@@ -394,78 +496,78 @@ export interface WebElementDefinition {
 export interface CanvasElement {
   id: string;
   name: string;
-  type: 'HeaderElement' | 'Section' | 'Heading' | 'TextBlock' | 'Image' | 'Button' | 'MagicCommandPalette' | 'Alert' | 'Card' | 'Dialog' | 'Tabs' | 'Tooltip' | 'MarqueeTestimonials' | 'TerminalAnimation' | 'HeroVideoDialog' | 'BentoGrid' | 'AnimatedList' | 'PricingTable' | 'FaqAccordion' | 'TeamSection' | 'ContactForm' | 'CtaSection' | 'TestimonialCard' | 'FeatureItem' | 'LogoCloud' | 'Footer' | string;
-  data: {
+  type: 'HeaderElement' | 'Section' | 'Heading' | 'TextBlock' | 'Image' | 'Button' | 'MagicCommandPalette' | 'Alert' | 'Card' | 'Dialog' | 'Tabs' | 'Tooltip' | 'MarqueeTestimonials' | 'TerminalAnimation' | 'HeroVideoDialog' | 'BentoGrid' | 'AnimatedList' | 'PricingTable' | 'FaqAccordion' | 'TeamSection' | 'ContactForm' | 'CtaSection' | 'TestimonialCard' | 'FeatureItem' | 'LogoCloud' | 'Footer' | 'AnnouncementBar' | 'ConnectWalletButton' | 'NftDisplayCard' | 'TokenInfoDisplay' | 'RoadmapTimeline' | 'BadgeElement' | 'SeparatorElement' | 'ProgressElement' | 'SkeletonElement' | 'ApiDataDisplay' | 'TransactionStatusDisplay' | 'GovernanceProposalCard' | string;
+  data: Partial<HeaderElementData & MarqueeReviewType[] & TerminalLine[] & HeroVideoData & BentoFeature[] & AnimatedListItem[] & CommandOption[] & TestimonialCardData & FeatureItemData & LogoCloudData & FooterData & AnnouncementBarData & ConnectWalletButtonData & NftDisplayCardData & TokenInfoDisplayData & RoadmapTimelineData & BadgeElementData & SeparatorElementData & ProgressElementData & SkeletonElementData & AlertElementData & ApiDataDisplayData & TransactionStatusData & GovernanceProposalData & {
+    // Common/generic fields
+    text?: string;
+    htmlTag?: HtmlTag;
+    fontSize?: TailwindFontSize;
+    textAlign?: TextAlignment;
+    cursor?: string;
+    src?: string;
+    alt?: string;
+    width?: number;
+    height?: number;
+    variant?: string | BadgeVariant | AlertElementData['variant']; // For Button, Alert, AnnouncementBar, Badge
+    className?: string; // For Section general styling, custom classes
+    'data-ai-hint'?: string;
+    backgroundColor?: string; // General purpose background color
+    textColor?: string; // General purpose text color
+    linkColor?: string; // General purpose link color
+    dismissible?: boolean; // For AnnouncementBar
+    // For specific complex elements, they'll have their own structures
     reviews?: MarqueeReviewType[];
     lines?: TerminalLine[];
-    videoSrc?: string;
-    thumbnailSrcLight?: string;
-    thumbnailSrcDark?: string;
-    thumbnailAlt?: string;
-    animationStyle?: HeroVideoData['animationStyle'];
+    // videoSrc, thumbnailSrcLight, thumbnailSrcDark etc are on HeroVideoData
     features?: BentoFeature[];
-    items?: AnimatedListItem[];
-    commands?: CommandOption[];
-    // Header specific data
-    siteTitle?: string;
-    logoUrl?: string;
-    navLinks?: NavLinkItem[];
-    backgroundColor?: string; // For elements like Section/Row, Header itself
-    textColor?: string; // For Header text color, TestimonialCard text
-    sticky?: boolean;
-    layout?: HeaderElementData['layout'];
-    gradientClass?: string;
-    templateId?: string;
-    // Generic text/button data
-    text?: string;
-    htmlTag?: HtmlTag; // For Heading and TextBlock
-    fontSize?: TailwindFontSize; // For text elements
-    textAlign?: TextAlignment; // For text elements
-    cursor?: string; // For element-specific cursor
-    // level property is deprecated for Heading, use htmlTag
-    src?: string; // For Image, LogoItem
-    alt?: string; // For Image, LogoItem
-    width?: number; // For Image
-    height?: number; // For Image
-    variant?: string; // For Button, Alert
-    className?: string; // For Section general styling
-    plans?: any[]; // For Pricing Table
-    // For FAQ Accordion
-    // For Team Section
-    members?: any[];
-    // For Contact Form
-    fields?: any[];
-    // For CTA Section
-    buttonText?: string;
-    // AI Hint for images
-    'data-ai-hint'?: string;
-
-    // New Element Data
-    quote?: string; // TestimonialCard
-    authorName?: string; // TestimonialCard
-    authorRole?: string; // TestimonialCard
-    avatarUrl?: string; // TestimonialCard
-    cardBackgroundColor?: string; // TestimonialCard
-
-    iconName?: string; // FeatureItem (lucide icon name)
-    title?: string; // FeatureItem, LogoCloud, CtaSection
-    description?: string; // FeatureItem
-    alignment?: 'left' | 'center' | 'right'; // FeatureItem
-
-    logos?: LogoItem[]; // LogoCloud
-    columns?: 2 | 3 | 4 | 5 | 6; // LogoCloud, Footer columns
-
-    copyrightText?: string; // Footer
-    // Footer columns are part of 'columns' property above using FooterColumn[]
-    socialLinks?: { platform: string; href: string }[]; // Footer
-  };
+    items?: AnimatedListItem[] | ApiDataItem[]; // For AnimatedList and ApiDataDisplay
+    // commands for MCP are on CommandOption[]
+    // plans for PricingTable
+    // members for TeamSection
+    // fields for ContactForm
+    // buttonText for CtaSection
+    // quote, authorName etc for TestimonialCard
+    // iconName, title, description, alignment for FeatureItem
+    // logos, title, columns for LogoCloud
+    // copyrightText, columns, socialLinks for Footer
+    // linkText, linkHref, variant, button colors for AnnouncementBar
+    // New Web3 elements
+    imageUrl?: string; // For NftDisplayCard
+    // name is already common for NftDisplayCard
+    collection?: string; // For NftDisplayCard
+    // price is already common for NftDisplayCard
+    tokenSymbol?: string; // For TokenInfoDisplay
+    // price is also for TokenInfoDisplay
+    marketCap?: string; // For TokenInfoDisplay
+    phases?: RoadmapPhase[]; // For RoadmapTimeline
+    // New Shadcn simple elements
+    orientation?: "horizontal" | "vertical"; // For Separator
+    decorative?: boolean; // For Separator
+    value?: number; // For Progress
+    indicatorColor?: string; // For Progress
+    // width, height, className already common for Skeleton
+    title?: string; // For Alert, ApiDataDisplay, GovernanceProposalCard
+    description?: string; // For Alert, FeatureItem, GovernanceProposalCard
+    // iconName also for Alert
+    // Web3 / API specific properties
+    status?: TransactionStatus | ProposalStatus; // For TransactionStatus and GovernanceProposal
+    transactionId?: string; // For TransactionStatus
+    message?: string; // For TransactionStatus
+    proposer?: string; // For GovernanceProposal
+    summary?: string; // For GovernanceProposal
+    endDate?: string; // For GovernanceProposal
+    votesFor?: string; // For GovernanceProposal
+    votesAgainst?: string; // For GovernanceProposal
+    layout?: 'list' | 'table'; // For ApiDataDisplay
+  }>;
 }
+
 
 export interface CanvasRow {
   id: string;
   layout: 'grid-cols-1' | 'grid-cols-2' | 'grid-cols-3' | 'grid-cols-4' | string;
   elements: CanvasElement[];
-  backgroundColor?: string; // Added for row-specific background color
+  backgroundColor?: string;
 }
 
 export interface Breakpoint {
@@ -474,7 +576,6 @@ export interface Breakpoint {
   icon: React.ElementType;
 }
 
-// For AI Landing Page Code Generator (if distinct from visual builder elements)
 export interface GenerateLandingPageCodeInput {
   description: string;
   primaryColor: string;
@@ -485,18 +586,28 @@ export interface GenerateLandingPageCodeInput {
   fontFamilyImportUrl?: string;
 }
 
-// Project data structure for localStorage
 export interface ProjectData {
-  id: string; // Renamed from currentProjectId for clarity in storage
+  id: string;
   pageTitle: string;
   canvasRows: CanvasRow[];
   lastModified: string;
   pageFillColor?: string;
   fontFamilyName?: string;
   fontFamilyImportUrl?: string;
-  bodyBackgroundColor?: string; // New: For the overall page body background
-  propPageCursor?: string; // New: For page-level cursor
+  bodyBackgroundColor?: string;
+  propPageCursor?: string;
 }
-    
 
-    
+// For Landing Page AI Chat Assistant
+export interface LandingPageChatInput {
+  userInput: string;
+  currentPageContext?: string; // Optional: a string representation of the current page structure
+  selectedModelIdentifier?: string; // e.g., "googleai/gemini-1.5-pro-latest"
+}
+export interface LandingPageChatOutput {
+  aiResponse: string;
+  // In future, could include structured commands:
+  // commands?: { action: 'add_element' | 'modify_element' | 'delete_element', details: any }[];
+  error?: string;
+}
+

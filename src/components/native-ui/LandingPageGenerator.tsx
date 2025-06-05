@@ -11,7 +11,8 @@ import {
   Link as LinkIconLucide, Info, Heading1, Baseline, ImageIcon, MessageSquareText, ListChecks, Youtube, TerminalSquareIcon,
   Undo2, Save, LayoutPanelLeft, Plus, Minus, CreditCard, HelpCircle, Mail, Megaphone, UserCircle, Video,
   ArrowLeft, ClipboardCopy, FileText, GitFork, Home, UploadCloud, ListTodo, TerminalSquare, PanelTop, PanelBottom, Server, FontAwesome, Type, FilePlus2, Projector,
-  AlignCenter, AlignLeft, AlignRight, FontSize, HandIcon, Star, UserSquare2, MessageSquareQuote, Lightbulb, Building, Twitter, Facebook, Linkedin, Instagram
+  AlignCenter, AlignLeft, AlignRight, FontSize, HandIcon, Star, UserSquare2, MessageSquareQuote, Lightbulb, Building, Twitter, Facebook, Linkedin, Instagram, RadioTower, MessageCircle as MessageCircleIcon,
+  Wallet, Image as ImageLucideIcon, Coins, BarChart3, GitMergeIcon, Milestone, Tags, MinusIcon, Activity, Loader2, List as ListIcon, CheckCircle2, AlertCircle, ClockIcon, Users2
 } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import {
@@ -19,7 +20,7 @@ import {
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -43,9 +44,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
+import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import type { CanvasElement, CanvasRow, HeroVideoData, MarqueeReviewType, TerminalLine as ITerminalLine, BentoFeature, AnimatedListItem as AnimatedListItemType, WebElementDefinition, Breakpoint as BreakpointType, HeaderElementData, GenerateLandingPageCodeInput, ProjectData, HtmlTag, TailwindFontSize, TextAlignment, TestimonialCardData, FeatureItemData, LogoCloudData, FooterData, LogoItem, FooterColumn, FooterLink } from '@/lib/types';
-import { handleGenerateLandingPageCodeAction } from '@/app/actions';
+import type { CanvasElement, CanvasRow, HeroVideoData, MarqueeReviewType, TerminalLine as ITerminalLine, BentoFeature, AnimatedListItem as AnimatedListItemType, WebElementDefinition, Breakpoint as BreakpointType, HeaderElementData, GenerateLandingPageCodeInput, ProjectData, HtmlTag, TailwindFontSize, TextAlignment, TestimonialCardData, FeatureItemData, LogoCloudData, FooterData, LogoItem, FooterColumn, AnnouncementBarData, LandingPageChatInput, ConnectWalletButtonData, NftDisplayCardData, TokenInfoDisplayData, RoadmapTimelineData, RoadmapPhase, BadgeVariant, BadgeElementData, SeparatorElementData, ProgressElementData, SkeletonElementData, AlertElementData, ApiDataDisplayData, ApiDataItem, TransactionStatusData, TransactionStatus, GovernanceProposalData, ProposalStatus } from '@/lib/types';
+import { handleGenerateLandingPageCodeAction, handleLandingPageChatAction } from '@/app/actions';
 import { useTheme } from "next-themes";
 import * as LucideIcons from 'lucide-react';
 
@@ -59,6 +61,8 @@ import AnimatedListDemo, { defaultNotifications as defaultAnimatedListItems } fr
 import HeaderElement from './landing-page-elements/HeaderElement';
 import AlertDemo from './landing-page-elements/AlertDemo';
 import CardDemo from './landing-page-elements/CardDemo';
+import AnnouncementBar from './landing-page-elements/AnnouncementBar';
+import LandingPageAiChat from './LandingPageAiChat';
 
 import DialogDemo from './landing-page-elements/DialogDemo';
 import TabsDemo from './landing-page-elements/TabsDemo';
@@ -72,6 +76,11 @@ import EditMarqueeModal from './landing-page-elements/EditMarqueeModal';
 import EditHeroVideoModal from './landing-page-elements/EditHeroVideoModal';
 import EditTerminalModal from './landing-page-elements/EditTerminalModal';
 import EditHeaderModal from './landing-page-elements/EditHeaderModal';
+
+import { Progress } from '@/components/ui/progress';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
+
 
 import { v4 as uuidv4 } from 'uuid';
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -172,6 +181,23 @@ const cursorOptions: { value: string; label: string }[] = [
   { value: 'cursor-progress', label: 'Progress (Busy)' },
 ];
 
+const defaultAnnouncementBarData: AnnouncementBarData = {
+  text: "🎉 Special announcement! Check out our new features.",
+  linkText: "Explore Now",
+  linkHref: "#",
+  variant: 'base',
+  dismissible: false,
+  backgroundColor: 'bg-secondary',
+  textColor: 'text-secondary-foreground',
+  linkColor: 'text-primary'
+};
+
+const defaultAlertData: AlertElementData = {
+  title: "Heads up!",
+  description: "This is a default alert message.",
+  variant: 'default',
+  iconName: 'Info',
+}
 
 const webElements: WebElementDefinition[] = [
   { name: 'Header', type: 'HeaderElement', previewComponent: <HeaderElement {...defaultHeaderData} />, initialData: defaultHeaderData, category: 'Layout', icon: PanelTop },
@@ -181,9 +207,13 @@ const webElements: WebElementDefinition[] = [
   { name: 'Image', type: 'Image', previewComponent: <NextImage src="https://placehold.co/300x200.png" alt="Placeholder" width={150} height={100} data-ai-hint="placeholder image" className="m-2"/>, initialData: { src: 'https://placehold.co/600x400.png', alt: 'Placeholder Image', width: 600, height: 400, 'data-ai-hint': 'placeholder image' }, category: 'Content', icon: ImageIcon },
   { name: 'Button', type: 'Button', previewComponent: <div className="p-2"><Button>Click Me</Button></div>, initialData: { text: 'Button Text', variant: 'default' }, category: 'Interactive Elements', icon: MousePointer },
   { name: 'Magic Command Palette', type: 'MagicCommandPalette', previewComponent: <McpDemo />, initialData: { commands: defaultMcpCommands }, category: 'Magic UI Components', icon: Palette },
-  { name: 'Alert', type: 'Alert', previewComponent: <AlertDemo />, initialData: {}, category: 'Shadcn UI Components', icon: Info },
+  { name: 'Alert', type: 'Alert', previewComponent: <AlertDemo />, initialData: { ...defaultAlertData, variant: 'default' }, category: 'Shadcn UI Components', icon: Info },
+  { name: 'Badge', type: 'BadgeElement', previewComponent: <div className="p-2"><Badge>Badge</Badge></div>, initialData: { text: 'New', variant: 'default' } as BadgeElementData, category: 'Shadcn UI Components', icon: Tags },
   { name: 'Card', type: 'Card', previewComponent: <CardDemo />, initialData: {}, category: 'Shadcn UI Components', icon: FileText },
   { name: 'Dialog', type: 'Dialog', previewComponent: <DialogDemo />, initialData: {}, category: 'Shadcn UI Components', icon: Undo2 },
+  { name: 'Progress Bar', type: 'ProgressElement', previewComponent: <div className="p-2 w-full"><Progress value={60} /></div>, initialData: { value: 50 } as ProgressElementData, category: 'Shadcn UI Components', icon: Activity },
+  { name: 'Separator', type: 'SeparatorElement', previewComponent: <div className="p-2 w-full"><Separator /></div>, initialData: { orientation: 'horizontal' } as SeparatorElementData, category: 'Shadcn UI Components', icon: MinusIcon },
+  { name: 'Skeleton', type: 'SkeletonElement', previewComponent: <div className="p-2 space-y-2"><Skeleton className="h-4 w-[200px]" /><Skeleton className="h-4 w-[150px]" /></div>, initialData: { width: 'w-full', height: 'h-4', className: 'rounded-md' } as SkeletonElementData, category: 'Shadcn UI Components', icon: Loader2 },
   { name: 'Tabs', type: 'Tabs', previewComponent: <TabsDemo />, initialData: {}, category: 'Shadcn UI Components', icon: ListTodo },
   { name: 'Tooltip', type: 'Tooltip', previewComponent: <TooltipDemo />, initialData: {}, category: 'Shadcn UI Components', icon: ClipboardCopy },
   { name: 'Marquee Testimonials', type: 'MarqueeTestimonials', previewComponent: <MarqueeDemo reviews={defaultMarqueeReviews.slice(0,2)} />, initialData: { reviews: defaultMarqueeReviews.map((r: MarqueeReviewType) => ({ ...r, id: uuidv4() })) }, category: 'Magic UI Components', icon: MessageSquareText },
@@ -193,13 +223,22 @@ const webElements: WebElementDefinition[] = [
   { name: 'Animated List', type: 'AnimatedList', previewComponent: <div className="p-2 h-40 overflow-hidden"><AnimatedListDemo notifications={defaultAnimatedListItems.slice(0,2)} /></div>, initialData: { items: defaultAnimatedListItems.map(n => ({ ...n, id: uuidv4() })) }, category: 'Magic UI Components', icon: ListChecks },
   { name: 'Pricing Table', type: 'PricingTable', previewComponent: <div className="h-20 w-full bg-muted/50 rounded-md flex items-center justify-center text-muted-foreground text-sm p-2">Pricing Table Placeholder</div>, initialData: { plans: [] }, category: 'Content', icon: CreditCard },
   { name: 'FAQ Accordion', type: 'FaqAccordion', previewComponent: <div className="p-2 w-full"><Accordion type="single" collapsible className="w-full"><AccordionItem value="item-1"><AccordionTrigger>Question 1?</AccordionTrigger><AccordionContent>Answer 1.</AccordionContent></AccordionItem></Accordion></div>, initialData: { items: [{question: "FAQ 1", answer: "Answer 1"}] }, category: 'Content', icon: HelpCircle },
-  { name: 'Team Section', type: 'TeamSection', previewComponent: <div className="h-20 w-full bg-muted/50 rounded-md flex items-center justify-center text-muted-foreground text-sm p-2 gap-2"><Avatar><AvatarFallback>TM</AvatarFallback></Avatar><Avatar><AvatarFallback>JD</AvatarFallback></Avatar></div>, initialData: { members: [] }, category: 'Content', icon: Users },
+  { name: 'Team Section', type: 'TeamSection', previewComponent: <div className="h-20 w-full bg-muted/50 rounded-md flex items-center justify-center text-muted-foreground text-sm p-2 gap-2"><Avatar><AvatarFallback>TM</AvatarFallback></Avatar><Avatar><AvatarFallback>JD</AvatarFallback></Avatar></div>, initialData: { members: [] }, category: 'Content', icon: Users2 },
   { name: 'Contact Form', type: 'ContactForm', previewComponent: <div className="p-2 space-y-2 w-full"><Label htmlFor="email-prev">Email</Label><Input id="email-prev" type="email" placeholder="Email" /><Button size="sm">Submit</Button></div>, initialData: { fields: [] }, category: 'Interactive Elements', icon: Mail },
   { name: 'Call to Action Section', type: 'CtaSection', previewComponent: <div className="p-4 bg-primary/10 rounded-md text-center space-y-2"><h3 className="font-semibold">Call to Action!</h3><Button>Get Started</Button></div>, initialData: { title: "Ready to start?", buttonText: "Sign Up" }, category: 'Layout', icon: Megaphone },
   { name: 'Testimonial Card', type: 'TestimonialCard', icon: MessageSquareQuote, category: 'Content', previewComponent: <Card className="w-full max-w-xs m-2"><CardHeader><Avatar className="mb-2"><AvatarImage src="https://avatar.vercel.sh/placeholder" alt="User" /><AvatarFallback>U</AvatarFallback></Avatar><CardTitle className="text-sm">John Doe</CardTitle><CardDescription className="text-xs">CEO, Example Inc.</CardDescription></CardHeader><CardContent><p className="text-sm italic">"This is a great product!"</p></CardContent></Card>, initialData: { quote: "This product changed my life!", authorName: "Jane Doe", authorRole: "Designer", avatarUrl: "https://avatar.vercel.sh/jane?size=64", cardBackgroundColor: undefined, textColor: undefined } as TestimonialCardData },
   { name: 'Feature Item', type: 'FeatureItem', icon: Lightbulb, category: 'Content', previewComponent: <div className="p-4 m-2 border rounded-lg text-center w-48"><Star className="mx-auto h-8 w-8 text-primary mb-2" /><h3 className="font-semibold text-sm">Feature Title</h3><p className="text-xs text-muted-foreground">Brief description of the feature.</p></div>, initialData: { iconName: 'Award', title: 'Amazing Feature', description: 'Explain why this feature is so amazing and beneficial to the user.', alignment: 'center' } as FeatureItemData },
   { name: 'Logo Cloud', type: 'LogoCloud', icon: Building, category: 'Content', previewComponent: <div className="p-4 m-2 border rounded-lg w-full max-w-md"><p className="text-center text-sm text-muted-foreground mb-2">Our Partners</p><div className="flex justify-around items-center"><LucideIcons.Figma className="h-8 w-8 text-muted-foreground/70" /><LucideIcons.Framer className="h-8 w-8 text-muted-foreground/70" /><LucideIcons.Sketch className="h-8 w-8 text-muted-foreground/70" /></div></div>, initialData: { title: 'Trusted By', logos: [{id: uuidv4(), src: "https://placehold.co/100x40/svg?text=Logo1&font=roboto", alt: "Client Logo 1"}, {id: uuidv4(), src: "https://placehold.co/120x30/svg?text=Logo2&font=open-sans", alt: "Client Logo 2"}], columns: 4 } as LogoCloudData },
   { name: 'Footer', type: 'Footer', icon: PanelBottom, category: 'Layout', previewComponent: <footer className="p-4 bg-muted/50 text-center text-xs w-full m-2 rounded"><p>&copy; 2024 Your Company</p></footer>, initialData: { copyrightText: `© ${new Date().getFullYear()} Your Company. All rights reserved.`, columns: [{id: uuidv4(), title: 'Links', links: [{id: uuidv4(), text: 'Privacy', href: '#'}, {id: uuidv4(), text: 'Terms', href: '#'}]}], backgroundColor: 'bg-muted', textColor: 'text-muted-foreground', socialLinks: [] } as FooterData },
+  { name: 'Announcement Bar', icon: RadioTower, type: 'AnnouncementBar', category: 'Marketing Components', previewComponent: <AnnouncementBar text="Site-wide Announcement" linkText="Learn More" linkHref="#" variant="base" dismissible={false} />, initialData: { ...defaultAnnouncementBarData, text: "Site-wide Announcement", variant: 'base', dismissible: false } as AnnouncementBarData },
+  // Web3 Components
+  { name: 'Connect Wallet Button', type: 'ConnectWalletButton', icon: Wallet, category: 'Web3 Components', previewComponent: <div className="p-2"><Button className="bg-blue-600 hover:bg-blue-700 text-white">Connect Wallet</Button></div>, initialData: { text: 'Connect Wallet', className: 'bg-blue-600 hover:bg-blue-700 text-white' } as ConnectWalletButtonData },
+  { name: 'NFT Display Card', type: 'NftDisplayCard', icon: ImageLucideIcon, category: 'Web3 Components', previewComponent: <Card className="w-40 m-2"><CardContent className="p-2"><NextImage src="https://placehold.co/150x150.png?text=NFT" alt="NFT Preview" width={134} height={134} data-ai-hint="nft art" className="rounded" /><p className="text-xs font-semibold mt-1">NFT Name</p><p className="text-xs text-muted-foreground">Collection</p></CardContent></Card>, initialData: { imageUrl: 'https://placehold.co/300x300.png?text=NFT', name: 'Cool NFT #123', collection: 'My Awesome Collection', price: '0.5 ETH', 'data-ai-hint': 'nft art' } as NftDisplayCardData },
+  { name: 'Token Info Display', type: 'TokenInfoDisplay', icon: Coins, category: 'Web3 Components', previewComponent: <div className="p-2 border rounded-md text-sm"><p><strong>Token:</strong> XYZ</p><p><strong>Price:</strong> $1.23</p></div>, initialData: { tokenSymbol: 'XYZ', price: '$0.00', marketCap: '$0' } as TokenInfoDisplayData },
+  { name: 'Roadmap / Timeline', type: 'RoadmapTimeline', icon: GitMergeIcon, category: 'Web3 Components', previewComponent: <div className="p-2 border rounded-md text-sm"><p><strong>Phase 1:</strong> Launch</p><p><strong>Phase 2:</strong> Moon</p></div>, initialData: { phases: [{id: uuidv4(), title: 'Q1 - Launch', description: 'Initial product launch and community building.'}, {id: uuidv4(), title: 'Q2 - Growth', description: 'Expand features and user base.'}] } as RoadmapTimelineData },
+  { name: 'API Data Display', type: 'ApiDataDisplay', icon: ListIcon, category: 'Data Display Components', previewComponent: <div className="p-2 border rounded-md text-sm w-full"><p className="font-semibold mb-1">API Data:</p><ul className="list-disc list-inside pl-2 text-xs"><li className="truncate">Key 1: Value 1</li><li className="truncate">Key 2: Value 2</li></ul></div>, initialData: { title: "Data from API", items: [{id: uuidv4(), key: "Sample Key 1", value: "Sample Value 1"}, {id: uuidv4(), key: "Sample Key 2", value: "Sample Value 2"}] } as ApiDataDisplayData },
+  { name: 'Transaction Status', type: 'TransactionStatusDisplay', icon: ClockIcon, category: 'Web3 Components', previewComponent: <div className="p-2 border rounded-md text-sm flex items-center gap-2"><LucideIcons.Loader2 className="animate-spin h-4 w-4 text-blue-500" /><span>Transaction Pending...</span></div>, initialData: { status: 'pending', transactionId: "0x123...abc", message: "Awaiting confirmation..." } as TransactionStatusData },
+  { name: 'Governance Proposal', type: 'GovernanceProposalCard', icon: Users2, category: 'Web3 Components', previewComponent: <Card className="w-full max-w-xs m-2"><CardHeader><CardTitle className="text-sm">Proposal Title</CardTitle><CardDescription className="text-xs">Proposed by: 0xABC...</CardDescription></CardHeader><CardContent><p className="text-xs">Summary of the proposal...</p></CardContent><CardFooter><Badge variant="outline">Active</Badge></CardFooter></Card>, initialData: { title: "New DAO Initiative", proposer: "0xDAOAdmin...", summary: "This proposal aims to improve community engagement by funding new events.", status: 'active', endDate: "In 7 days" } as GovernanceProposalData },
 ];
 
 interface StoredProjectMetadata {
@@ -273,7 +312,6 @@ export default function LandingPageGenerator() {
   const [generatedCode, setGeneratedCode] = useState<string | null>(null);
 
 
-
   const [siteTitleSettings, setSiteTitleSettings] = useState('My NativeUI Site');
   const [siteDescriptionSettings, setSiteDescriptionSettings] = useState('Made with NativeUI Builder');
   const [siteLanguageSettings, setSiteLanguageSettings] = useState('');
@@ -299,6 +337,11 @@ export default function LandingPageGenerator() {
 
   const [draggingElementInfo, setDraggingElementInfo] = useState<{ rowId: string; elementId: string; elementIndex: number } | null>(null);
   const [dragOverElementInfo, setDragOverElementInfo] = useState<{ rowId: string; elementId: string; elementIndex: number } | null>(null);
+
+  const [isLandingPageAiChatOpen, setIsLandingPageAiChatOpen] = useState(false);
+  const [landingPageAiChatMessages, setLandingPageAiChatMessages] = useState<{ id: string; text: string; sender: 'user' | 'ai' | 'system' }[]>([]);
+  const [isLandingPageAiResponding, setIsLandingPageAiResponding] = useState(false);
+
 
   const selectedElement = React.useMemo(() => {
     if (!selectedElementId || !selectedRowId) return null;
@@ -386,6 +429,7 @@ export default function LandingPageGenerator() {
     setPropBodyBackgroundColor(undefined);
     setSelectedRowId(null);
     setSelectedElementId(null);
+    setLandingPageAiChatMessages([]);
     if (typeof document !== 'undefined' && originalBodyBackgroundColorRef.current !== null) {
       document.body.style.backgroundColor = originalBodyBackgroundColorRef.current;
       const dynamicStyleTag = document.getElementById('dynamic-body-background-style');
@@ -449,18 +493,18 @@ export default function LandingPageGenerator() {
     event.dataTransfer.setData('application/json', JSON.stringify({ type: 'REORDER_ELEMENT', elementId, rowId, elementIndex }));
     event.dataTransfer.effectAllowed = 'move';
   };
-  
+
   const handleElementDragEnd = () => {
     setDraggingElementInfo(null);
     setDragOverElementInfo(null);
   };
-  
+
   const handleElementDragOver = (event: React.DragEvent<HTMLDivElement>, rowId: string, elementId: string, elementIndex: number) => {
     event.preventDefault();
-    event.stopPropagation(); 
+    event.stopPropagation();
     if (draggingElementInfo && draggingElementInfo.rowId === rowId) {
         event.dataTransfer.dropEffect = 'move';
-        if (draggingElementInfo.elementId !== elementId) { 
+        if (draggingElementInfo.elementId !== elementId) {
             setDragOverElementInfo({ rowId, elementId, elementIndex });
         } else {
             setDragOverElementInfo(null);
@@ -470,53 +514,53 @@ export default function LandingPageGenerator() {
         setDragOverElementInfo(null);
     }
   };
-  
+
   const handleElementDragLeave = (event: React.DragEvent<HTMLDivElement>) => {
     const relatedTarget = event.relatedTarget as Node;
     if (!(event.currentTarget as Node).contains(relatedTarget)) {
         setDragOverElementInfo(null);
     }
   };
-  
+
   const handleElementDropOnElement = (event: React.DragEvent<HTMLDivElement>, targetRowId: string, targetElementId: string, targetElementIndex: number) => {
     event.preventDefault();
-    event.stopPropagation(); 
+    event.stopPropagation();
     if (!draggingElementInfo) {
       setDragOverElementInfo(null);
       return;
     }
-  
+
     const { rowId: sourceRowId, elementId: sourceElementId, elementIndex: sourceElementIndex } = draggingElementInfo;
-  
+
     if (sourceRowId !== targetRowId) {
       toast({ title: "Move Canceled", description: "Elements can only be reordered within the same row.", variant: "default" });
       setDraggingElementInfo(null);
       setDragOverElementInfo(null);
       return;
     }
-  
-    if (sourceElementId === targetElementId) { 
+
+    if (sourceElementId === targetElementId) {
       setDraggingElementInfo(null);
       setDragOverElementInfo(null);
       return;
     }
-  
+
     storePreviousState();
-  
+
     setCanvasRows((prevRows) =>
       prevRows.map((row) => {
         if (row.id === sourceRowId) {
           const newElements = [...row.elements];
           const [draggedItem] = newElements.splice(sourceElementIndex, 1);
-          
+
           newElements.splice(targetElementIndex, 0, draggedItem);
-          
+
           return { ...row, elements: newElements };
         }
         return row;
       })
     );
-  
+
     toast({ title: "Element Reordered", description: "Element order updated within the row." });
     setDraggingElementInfo(null);
     setDragOverElementInfo(null);
@@ -542,7 +586,7 @@ export default function LandingPageGenerator() {
             type: elementDefinition.type,
             data: deepCopy(elementDefinition.initialData),
           };
-          
+
           if (newElement.type === 'Heading' || newElement.type === 'TextBlock') {
              newElement.data.textAlign = 'text-left';
           }
@@ -575,7 +619,7 @@ export default function LandingPageGenerator() {
                 if (r.id === sourceRowId) {
                     const newElements = [...r.elements];
                     const [draggedItem] = newElements.splice(sourceElementIndex, 1);
-                    newElements.push(draggedItem); 
+                    newElements.push(draggedItem);
                     return {...r, elements: newElements};
                 }
                 return r;
@@ -636,8 +680,8 @@ export default function LandingPageGenerator() {
     if (!element) return;
 
     storePreviousState();
-    setSelectedRowId(rowId); // Ensure row is also "selected" for context
-    setSelectedElementId(elementId); // Set the element to be edited
+    setSelectedRowId(rowId);
+    setSelectedElementId(elementId);
 
     if (element.type === 'MarqueeTestimonials') {
       setEditingMarqueeElementId(elementId);
@@ -653,7 +697,7 @@ export default function LandingPageGenerator() {
       setIsEditHeaderModalOpen(true);
     }
      else {
-       if (!['Heading', 'TextBlock', 'Section', 'TestimonialCard', 'FeatureItem', 'LogoCloud', 'Footer', 'Image', 'Button'].includes(element.type)) {
+       if (!['Heading', 'TextBlock', 'Section', 'TestimonialCard', 'FeatureItem', 'LogoCloud', 'Footer', 'Image', 'Button', 'AnnouncementBar', 'ConnectWalletButton', 'NftDisplayCard', 'TokenInfoDisplay', 'RoadmapTimeline', 'BadgeElement', 'SeparatorElement', 'ProgressElement', 'SkeletonElement', 'Alert', 'ApiDataDisplay', 'TransactionStatusDisplay', 'GovernanceProposalCard'].includes(element.type)) {
          toast({ title: "Edit Element", description: `Editing for ${element.name} via modal coming soon! Basic props in panel.` });
        }
     }
@@ -730,7 +774,7 @@ export default function LandingPageGenerator() {
       let textClassesArray: string[] = [];
 
       textClassesArray.push(element.data.textAlign || 'text-left');
-      
+
       if (element.data.fontSize) {
         textClassesArray.push(element.data.fontSize);
       } else if (tag.startsWith('h')) {
@@ -741,7 +785,7 @@ export default function LandingPageGenerator() {
         else if (tag === 'h5') textClassesArray.push("text-lg");
         else if (tag === 'h6') textClassesArray.push("text-base");
       } else {
-        textClassesArray.push("text-base"); 
+        textClassesArray.push("text-base");
       }
 
       if (tag.startsWith('h')) {
@@ -753,9 +797,9 @@ export default function LandingPageGenerator() {
         else if (tag === 'h5') textClassesArray.push("my-1");
         else if (tag === 'h6') textClassesArray.push("my-1");
       } else {
-        textClassesArray.push("my-2"); 
+        textClassesArray.push("my-2");
       }
-      
+
       const textContent = element.data.text || (element.type === 'Heading' ? "Default Heading" : "Default text block content.");
       const textClasses = cn(textClassesArray);
 
@@ -794,16 +838,19 @@ export default function LandingPageGenerator() {
         case 'HeaderElement':
           return <HeaderElement {...(element.data as HeaderElementData)} />;
         case 'Section':
-           const sectionStyle: React.CSSProperties = {
-            backgroundColor: element.data.backgroundColor || 'transparent',
-           };
+           const sectionStyle: React.CSSProperties = {};
+            if (element.data.backgroundColor && element.data.backgroundColor.startsWith('#')) {
+                sectionStyle.backgroundColor = element.data.backgroundColor;
+            }
            return (
              <div
                style={sectionStyle}
                className={cn(
                  "p-4 my-2 min-h-[50px] w-full border border-dashed rounded-md",
                  element.data.className,
-                 !element.data.backgroundColor ? "border-neutral-300 bg-neutral-50 dark:bg-neutral-800/30" : "border-transparent"
+                 !element.data.backgroundColor || !element.data.backgroundColor.startsWith('#')
+                    ? (element.data.backgroundColor || "border-neutral-300 bg-neutral-50 dark:bg-neutral-800/30")
+                    : "border-transparent"
                )}
              >
                <div className={cn("flex items-center justify-center", !element.data.backgroundColor && "text-neutral-400")}>
@@ -829,10 +876,36 @@ export default function LandingPageGenerator() {
           );
         case 'Button':
           return <Button variant="default" className="my-2">{element.data.text || "Button"}</Button>;
+        case 'AnnouncementBar':
+           const annData = element.data as AnnouncementBarData;
+           return <AnnouncementBar {...annData} />;
         case 'MagicCommandPalette':
           return <McpDemo commands={(element.data as any).commands || defaultMcpCommands} />;
         case 'Alert':
-          return <AlertDemo />;
+          const alertData = element.data as AlertElementData;
+          const IconComp = alertData.iconName && (LucideIcons as any)[alertData.iconName] ? (LucideIcons as any)[alertData.iconName] : Info;
+          return (
+            <Alert variant={alertData.variant || 'default'} className="my-2">
+              <IconComp className="h-4 w-4" />
+              {alertData.title && <AlertTitle>{alertData.title}</AlertTitle>}
+              {alertData.description && <AlertDescription>{alertData.description}</AlertDescription>}
+            </Alert>
+          );
+        case 'BadgeElement':
+          return <Badge variant={(element.data as BadgeElementData).variant || 'default'} className="my-2">{ (element.data as BadgeElementData).text || 'Badge' }</Badge>;
+        case 'SeparatorElement':
+          return <Separator orientation={(element.data as SeparatorElementData).orientation || 'horizontal'} className="my-4" />;
+        case 'ProgressElement':
+          const progressData = element.data as ProgressElementData;
+          return (
+            <div className="my-2 w-full">
+              <Progress value={progressData.value || 0} className={cn(progressData.backgroundColor)} />
+            </div>
+          );
+        case 'SkeletonElement':
+          const skeletonData = element.data as SkeletonElementData;
+          return <Skeleton className={cn(skeletonData.width, skeletonData.height, skeletonData.className, "my-2")} />;
+
         case 'Card':
           return <CardDemo />;
         case 'Dialog':
@@ -940,6 +1013,112 @@ export default function LandingPageGenerator() {
                 </div>
               </div>
             </footer>
+          );
+        case 'ConnectWalletButton':
+          return <Button className={cn("my-2", element.data.className)}>{element.data.text || "Connect Wallet"}</Button>;
+        case 'NftDisplayCard':
+          const nftData = element.data as NftDisplayCardData;
+          return (
+            <Card className="w-full max-w-xs my-2">
+              <CardContent className="p-3">
+                <NextImage
+                  src={nftData.imageUrl || "https://placehold.co/300x300.png?text=NFT"}
+                  alt={nftData.name || "NFT Image"}
+                  width={300}
+                  height={300}
+                  className="w-full h-auto rounded-md mb-2 object-cover aspect-square"
+                  data-ai-hint={nftData['data-ai-hint'] || "nft art"}
+                />
+                <h4 className="font-semibold text-sm truncate" title={nftData.name}>{nftData.name || "NFT Name"}</h4>
+                <p className="text-xs text-muted-foreground truncate" title={nftData.collection}>{nftData.collection || "Collection Name"}</p>
+                {nftData.price && <p className="text-sm font-medium mt-1">{nftData.price}</p>}
+              </CardContent>
+            </Card>
+          );
+        case 'TokenInfoDisplay':
+            const tokenData = element.data as TokenInfoDisplayData;
+            return <div className="p-4 my-2 border rounded-md text-sm bg-muted/30"><p><strong>Token:</strong> {tokenData.tokenSymbol || 'N/A'}</p><p><strong>Price:</strong> {tokenData.price || 'N/A'}</p><p><strong>Market Cap:</strong> {tokenData.marketCap || 'N/A'}</p></div>;
+        case 'RoadmapTimeline':
+            const roadmapData = element.data as RoadmapTimelineData;
+            return (
+                <div className="p-4 my-2 border rounded-md space-y-3 bg-muted/30">
+                    {(roadmapData.phases || []).map(phase => (
+                        <div key={phase.id}>
+                            <h4 className="font-semibold text-sm">{phase.title || 'Phase Title'}</h4>
+                            <p className="text-xs text-muted-foreground">{phase.description || 'Phase description...'}</p>
+                        </div>
+                    ))}
+                    {(!roadmapData.phases || roadmapData.phases.length === 0) && <p className="text-xs text-muted-foreground">Roadmap items go here.</p>}
+                </div>
+            );
+        case 'ApiDataDisplay':
+          const apiData = element.data as ApiDataDisplayData;
+          return (
+            <Card className="my-2 w-full">
+              <CardHeader>
+                <CardTitle className="text-base">{apiData.title || "API Data"}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                {(apiData.items || []).length > 0 ? (
+                  <ul className="space-y-1 text-sm">
+                    {(apiData.items).map(item => (
+                      <li key={item.id} className="flex justify-between">
+                        <span className="font-medium text-muted-foreground">{item.key}:</span>
+                        <span>{item.value}</span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No data to display. Configure items in properties.</p>
+                )}
+              </CardContent>
+            </Card>
+          );
+        case 'TransactionStatusDisplay':
+          const txData = element.data as TransactionStatusData;
+          let TxIcon = ClockIcon;
+          let txColor = "text-blue-500";
+          if (txData.status === 'success') { TxIcon = CheckCircle2; txColor = "text-green-500"; }
+          else if (txData.status === 'failed') { TxIcon = AlertCircle; txColor = "text-red-500"; }
+          return (
+            <div className={cn("p-4 my-2 border rounded-md text-sm flex items-center gap-3", txData.status === 'success' ? 'bg-green-500/10 border-green-500/30' : txData.status === 'failed' ? 'bg-red-500/10 border-red-500/30' : 'bg-blue-500/10 border-blue-500/30')}>
+              <TxIcon className={cn("h-6 w-6", txColor)} />
+              <div>
+                <p className={cn("font-semibold", txColor)}>
+                  {txData.status ? txData.status.charAt(0).toUpperCase() + txData.status.slice(1) : 'Unknown Status'}
+                </p>
+                {txData.transactionId && <p className="text-xs text-muted-foreground truncate" title={txData.transactionId}>TxID: {txData.transactionId}</p>}
+                {txData.message && <p className="text-xs text-muted-foreground mt-0.5">{txData.message}</p>}
+              </div>
+            </div>
+          );
+        case 'GovernanceProposalCard':
+          const proposalData = element.data as GovernanceProposalData;
+          let statusColor = "bg-gray-500";
+          if (proposalData.status === 'active') statusColor = "bg-blue-500";
+          else if (proposalData.status === 'passed' || proposalData.status === 'executed') statusColor = "bg-green-500";
+          else if (proposalData.status === 'failed') statusColor = "bg-red-500";
+          return (
+            <Card className="my-2 w-full">
+              <CardHeader>
+                <div className="flex justify-between items-start">
+                  <CardTitle className="text-base mb-1">{proposalData.title || "Proposal Title"}</CardTitle>
+                  <Badge className={cn("text-xs", statusColor, "text-white")}>{proposalData.status || "N/A"}</Badge>
+                </div>
+                {proposalData.proposer && <CardDescription className="text-xs">Proposed by: {proposalData.proposer}</CardDescription>}
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <p className="text-sm text-muted-foreground">{proposalData.summary || "Summary of the proposal goes here."}</p>
+                <div className="text-xs grid grid-cols-2 gap-x-4 gap-y-1">
+                  {proposalData.endDate && <p><strong>Ends:</strong> {proposalData.endDate}</p>}
+                  {proposalData.votesFor && <p><strong>For:</strong> {proposalData.votesFor}</p>}
+                  {proposalData.votesAgainst && <p><strong>Against:</strong> {proposalData.votesAgainst}</p>}
+                </div>
+              </CardContent>
+              <CardFooter>
+                <Button variant="outline" size="sm" className="w-full">View Proposal</Button>
+              </CardFooter>
+            </Card>
           );
         default:
           return <div className="my-2 p-2 bg-red-100 text-red-700 rounded-md">Unknown element type: {element.name} ({element.type})</div>;
@@ -1290,6 +1469,7 @@ export default function LandingPageGenerator() {
         setPropPageFillColor(projectData.pageFillColor || undefined);
         setPropPageCursor(projectData.propPageCursor || undefined);
         setPropBodyBackgroundColor(projectData.bodyBackgroundColor || undefined);
+        setLandingPageAiChatMessages([]);
 
         setActiveView('editor');
         toast({title: "Project Loaded", description: `Editing "${projectData.pageTitle || 'Untitled Project'}"`});
@@ -1316,7 +1496,7 @@ export default function LandingPageGenerator() {
 
 
   const handleFillColorChange = (color: string) => {
-    const newColor = (color === '#FFFFFF' || color === '#00000000' || color === '#000000') ? undefined : color; 
+    const newColor = (color === '#FFFFFF' || color === '#00000000' || color === '#000000') ? undefined : color;
     if (selectedRowId && !selectedElementId) { // Editing row fill
       setCanvasRows(prevRows =>
         prevRows.map(row =>
@@ -1327,7 +1507,7 @@ export default function LandingPageGenerator() {
       setPropPageFillColor(newColor);
     }
   };
-  
+
   const handleBodyFillColorChange = (color: string) => {
     const newColor = (color === '#FFFFFF' || color === '#00000000' || color === '#000000') ? undefined : color;
     setPropBodyBackgroundColor(newColor);
@@ -1336,10 +1516,55 @@ export default function LandingPageGenerator() {
   const toggleGridVisibility = () => {
     setIsGridVisible(prev => !prev);
   };
-  
+
   const genericFillLabel = selectedElementId
-    ? (selectedElement?.type === 'Section' ? "Fill (N/A - Use Section Properties)" : "Element Fill (TBD)")
+    ? (selectedElement?.type === 'Section' ? "Section Background" : "Element Fill (TBD)")
     : (selectedRowId ? "Row Background" : "Page Canvas Background");
+
+
+  const handleLandingPageAiChatSend = async (userInput: string, selectedModelIdentifier?: string) => {
+    if (!userInput.trim()) return;
+    setLandingPageAiChatMessages(prev => [...prev, { id: uuidv4(), text: userInput, sender: 'user' }]);
+    setIsLandingPageAiResponding(true);
+
+    const flowInput: LandingPageChatInput = { userInput, selectedModelIdentifier };
+
+    try {
+      const result = await handleLandingPageChatAction(flowInput);
+      if (result.error) {
+        setLandingPageAiChatMessages(prev => [...prev, { id: uuidv4(), text: `AI Error: ${result.error}`, sender: 'system' }]);
+      } else {
+        setLandingPageAiChatMessages(prev => [...prev, { id: uuidv4(), text: result.aiResponse, sender: 'ai' }]);
+      }
+    } catch (error: any) {
+      console.error("Error calling landingPageChatAction:", error);
+      setLandingPageAiChatMessages(prev => [...prev, { id: uuidv4(), text: "System: An unexpected error occurred.", sender: 'system' }]);
+    } finally {
+      setIsLandingPageAiResponding(false);
+    }
+  };
+
+  const handleUpdateRoadmapPhases = (elementId: string, updatedPhases: RoadmapPhase[]) => {
+     setCanvasRows(prevRows => prevRows.map(row => ({
+      ...row,
+      elements: row.elements.map(el =>
+        el.id === elementId && el.type === 'RoadmapTimeline'
+          ? { ...el, data: { ...el.data, phases: updatedPhases } }
+          : el
+      )
+    })));
+  };
+
+  const handleUpdateApiDataItems = (elementId: string, updatedItems: ApiDataItem[]) => {
+    setCanvasRows(prevRows => prevRows.map(row => ({
+     ...row,
+     elements: row.elements.map(el =>
+       el.id === elementId && el.type === 'ApiDataDisplay'
+         ? { ...el, data: { ...el.data, items: updatedItems } }
+         : el
+     )
+   })));
+ };
 
 
   if (!hasMounted) {
@@ -1563,6 +1788,7 @@ export default function LandingPageGenerator() {
       transformOrigin: 'center center',
       fontFamily: googleFonts.find(f => f.name === propPageFontFamilyName)?.family || 'sans-serif',
       backgroundColor: propPageFillColor || 'transparent',
+      cursor: propPageCursor || 'auto',
   };
 
   if (isGridVisible) {
@@ -1604,6 +1830,9 @@ export default function LandingPageGenerator() {
           </Button>
            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleSaveVersion} title="Save Version">
               <Save className="h-4 w-4" />
+          </Button>
+           <Button variant="ghost" size="icon" className="h-8 w-8" title="AI Page Assistant" onClick={() => setIsLandingPageAiChatOpen(prev => !prev)}>
+              <MessageCircleIcon className="h-4 w-4" />
           </Button>
         </div>
         <div className="flex items-center gap-2">
@@ -1658,7 +1887,7 @@ export default function LandingPageGenerator() {
 
       <ResizablePanelGroup
         direction={isMobile ? "vertical" : "horizontal"}
-        className="flex-grow"
+        className="flex-grow relative" 
       >
         <ResizablePanel
             defaultSize={14}
@@ -1729,7 +1958,7 @@ export default function LandingPageGenerator() {
               ref={scrollAreaRef}
             >
               <div
-                className="flex items-center justify-center min-h-full min-w-full" 
+                className="flex items-center justify-center min-h-full min-w-full"
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={(e) => {
                     e.stopPropagation();
@@ -1741,7 +1970,7 @@ export default function LandingPageGenerator() {
                   className={cn(
                     "transition-all duration-300 shadow-xl relative p-4 md:p-8",
                     canvasRows.length === 0 && "flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/50",
-                    propPageCursor // Apply page cursor if set
+                    propPageCursor 
                   )}
                   style={pageCanvasStyle}
                   onDragOver={(e) => {e.preventDefault(); e.stopPropagation();}}
@@ -1776,8 +2005,8 @@ export default function LandingPageGenerator() {
                             const isSelected = selectedElementId === el.id;
                             const elementCursorClass = el.data.cursor;
                             return (
-                            <div 
-                              key={el.id} 
+                            <div
+                              key={el.id}
                               draggable={true}
                               onDragStart={(e) => handleElementDragStart(e, row.id, el.id, index)}
                               onDragEnd={handleElementDragEnd}
@@ -1858,28 +2087,28 @@ export default function LandingPageGenerator() {
                     className={cn("h-8 w-8 hover:bg-zinc-700", activeCanvasTool === 'pan' && "bg-zinc-600 text-white")}
                 > <HandIcon className="h-4 w-4" /></Button>
                 <Separator orientation="vertical" className="h-6 bg-zinc-700" />
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    title="Set Dark Mode" 
-                    onClick={() => setTheme('dark')} 
-                    className={cn("h-8 w-8 hover:bg-zinc-700", theme === 'dark' && "bg-zinc-600 text-white")}> 
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Set Dark Mode"
+                    onClick={() => setTheme('dark')}
+                    className={cn("h-8 w-8 hover:bg-zinc-700", theme === 'dark' && "bg-zinc-600 text-white")}>
                     <CircleIcon className="h-4 w-4" />
                 </Button>
-                <Button 
-                    variant="ghost" 
-                    size="icon" 
-                    title="Set Light Mode" 
-                    onClick={() => setTheme('light')} 
-                    className={cn("h-8 w-8 hover:bg-zinc-700", theme === 'light' && "bg-zinc-600 text-white")}> 
+                <Button
+                    variant="ghost"
+                    size="icon"
+                    title="Set Light Mode"
+                    onClick={() => setTheme('light')}
+                    className={cn("h-8 w-8 hover:bg-zinc-700", theme === 'light' && "bg-zinc-600 text-white")}>
                     <SunIcon className="h-4 w-4" />
                 </Button>
                 <Separator orientation="vertical" className="h-6 bg-zinc-700" />
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  title="Toggle Grid" 
-                  onClick={toggleGridVisibility} 
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  title="Toggle Grid"
+                  onClick={toggleGridVisibility}
                   className={cn("h-8 w-8 hover:bg-zinc-700", isGridVisible && "bg-zinc-600 text-white")}
                 >
                   <GridIconLucide className="h-4 w-4" />
@@ -1902,11 +2131,21 @@ export default function LandingPageGenerator() {
                 </Select>
               </div>
             </div>
+             {isLandingPageAiChatOpen && (
+              <div className="absolute bottom-16 right-4 z-30 w-full max-w-sm h-[450px] md:max-w-md md:h-[500px]">
+                <LandingPageAiChat
+                  messages={landingPageAiChatMessages}
+                  onSendMessage={handleLandingPageAiChatSend}
+                  isResponding={isLandingPageAiResponding}
+                  className="shadow-2xl"
+                />
+              </div>
+            )}
           </div>
         </ResizablePanel>
 
         <ResizableHandle withHandle />
-        
+
         <ResizablePanel
           defaultSize={18}
           minSize={15}
@@ -1998,6 +2237,164 @@ export default function LandingPageGenerator() {
                           </AccordionContent>
                         </AccordionItem>
                       )}
+                      {selectedElement && selectedElement.type === 'TokenInfoDisplay' && (
+                        <AccordionItem value="token_info_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div>
+                              <Label htmlFor="tokenSymbol" className="text-xs">Token Symbol</Label>
+                              <Input id="tokenSymbol" value={(selectedElement.data as TokenInfoDisplayData).tokenSymbol || ''} onChange={e => handleUpdateSelectedElementData('tokenSymbol', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="tokenPrice" className="text-xs">Price</Label>
+                              <Input id="tokenPrice" value={(selectedElement.data as TokenInfoDisplayData).price || ''} onChange={e => handleUpdateSelectedElementData('price', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="tokenMarketCap" className="text-xs">Market Cap</Label>
+                              <Input id="tokenMarketCap" value={(selectedElement.data as TokenInfoDisplayData).marketCap || ''} onChange={e => handleUpdateSelectedElementData('marketCap', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                       {selectedElement && selectedElement.type === 'RoadmapTimeline' && (
+                        <AccordionItem value="roadmap_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            {(selectedElement.data.phases as RoadmapPhase[] || []).map((phase, index) => (
+                              <div key={phase.id} className="p-3 border rounded-md bg-muted/10 space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <Label className="text-xs font-medium">Phase #{index + 1}</Label>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive" onClick={() => {
+                                    const updatedPhases = (selectedElement.data.phases as RoadmapPhase[]).filter(p => p.id !== phase.id);
+                                    handleUpdateRoadmapPhases(selectedElementId!, updatedPhases);
+                                  }}>
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                                <div>
+                                  <Label htmlFor={`roadmapTitle-${phase.id}`} className="text-xs">Title</Label>
+                                  <Input
+                                    id={`roadmapTitle-${phase.id}`}
+                                    value={phase.title}
+                                    onChange={e => {
+                                      const updatedPhases = (selectedElement.data.phases as RoadmapPhase[]).map(p => p.id === phase.id ? { ...p, title: e.target.value } : p);
+                                      handleUpdateRoadmapPhases(selectedElementId!, updatedPhases);
+                                    }}
+                                    className="h-8 mt-1 bg-background text-xs"
+                                  />
+                                </div>
+                                <div>
+                                  <Label htmlFor={`roadmapDesc-${phase.id}`} className="text-xs">Description</Label>
+                                  <Textarea
+                                    id={`roadmapDesc-${phase.id}`}
+                                    value={phase.description}
+                                    onChange={e => {
+                                      const updatedPhases = (selectedElement.data.phases as RoadmapPhase[]).map(p => p.id === phase.id ? { ...p, description: e.target.value } : p);
+                                      handleUpdateRoadmapPhases(selectedElementId!, updatedPhases);
+                                    }}
+                                    className="h-16 mt-1 bg-background text-xs"
+                                  />
+                                </div>
+                              </div>
+                            ))}
+                            <Button variant="outline" size="sm" className="mt-2" onClick={() => {
+                              const newPhase: RoadmapPhase = { id: uuidv4(), title: 'New Phase', description: 'Description...' };
+                              const updatedPhases = [...((selectedElement.data.phases as RoadmapPhase[]) || []), newPhase];
+                              handleUpdateRoadmapPhases(selectedElementId!, updatedPhases);
+                            }}>
+                              <PlusCircle className="mr-2 h-4 w-4" /> Add Phase
+                            </Button>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                      {selectedElement && selectedElement.type === 'AnnouncementBar' && (
+                        <AccordionItem value="announcement_bar_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div>
+                              <Label htmlFor="annText" className="text-xs">Announcement Text</Label>
+                              <Input id="annText" value={selectedElement.data.text || ''} onChange={e => handleUpdateSelectedElementData('text', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="annLinkText" className="text-xs">Link Text</Label>
+                              <Input id="annLinkText" value={selectedElement.data.linkText || ''} onChange={e => handleUpdateSelectedElementData('linkText', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="annLinkHref" className="text-xs">Link URL</Label>
+                              <Input id="annLinkHref" value={selectedElement.data.linkHref || ''} onChange={e => handleUpdateSelectedElementData('linkHref', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="annVariant" className="text-xs">Variant</Label>
+                              <Select value={selectedElement.data.variant || 'base'} onValueChange={v => handleUpdateSelectedElementData('variant', v)}>
+                                <SelectTrigger id="annVariant" className="h-8 mt-1 bg-background text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="base" className="text-xs">Base</SelectItem>
+                                  <SelectItem value="fixed" className="text-xs">Fixed</SelectItem>
+                                  <SelectItem value="floating" className="text-xs">Floating</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                             <div className="flex items-center space-x-2 pt-1">
+                                <Switch id="annDismissible" checked={selectedElement.data.dismissible || false} onCheckedChange={c => handleUpdateSelectedElementData('dismissible', c)} />
+                                <Label htmlFor="annDismissible" className="text-xs">Dismissible</Label>
+                            </div>
+                            <div>
+                              <Label htmlFor="annBgColor" className="text-xs">Background Color (Hex or Tailwind)</Label>
+                              <Input id="annBgColor" value={selectedElement.data.backgroundColor || ''} onChange={e => handleUpdateSelectedElementData('backgroundColor', e.target.value)} placeholder="e.g., #RRGGBB or bg-blue-500" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                             <div>
+                              <Label htmlFor="annTextColor" className="text-xs">Text Color (Hex or Tailwind)</Label>
+                              <Input id="annTextColor" value={selectedElement.data.textColor || ''} onChange={e => handleUpdateSelectedElementData('textColor', e.target.value)} placeholder="e.g., #RRGGBB or text-white" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                             <div>
+                              <Label htmlFor="annLinkColor" className="text-xs">Link Color (Hex or Tailwind)</Label>
+                              <Input id="annLinkColor" value={selectedElement.data.linkColor || ''} onChange={e => handleUpdateSelectedElementData('linkColor', e.target.value)} placeholder="e.g., #RRGGBB or text-yellow-300" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                       {selectedElement && selectedElement.type === 'ConnectWalletButton' && (
+                        <AccordionItem value="connect_wallet_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div>
+                              <Label htmlFor="cwButtonText" className="text-xs">Button Text</Label>
+                              <Input id="cwButtonText" value={selectedElement.data.text || ''} onChange={e => handleUpdateSelectedElementData('text', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="cwButtonClassName" className="text-xs">Custom CSS Classes</Label>
+                              <Input id="cwButtonClassName" value={selectedElement.data.className || ''} onChange={e => handleUpdateSelectedElementData('className', e.target.value)} placeholder="e.g., bg-purple-600 text-white" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                      {selectedElement && selectedElement.type === 'NftDisplayCard' && (
+                        <AccordionItem value="nft_card_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div>
+                              <Label htmlFor="nftImageUrl" className="text-xs">Image URL</Label>
+                              <Input id="nftImageUrl" value={selectedElement.data.imageUrl || ''} onChange={e => handleUpdateSelectedElementData('imageUrl', e.target.value)} placeholder="https://example.com/nft.png" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="nftName" className="text-xs">NFT Name</Label>
+                              <Input id="nftName" value={selectedElement.data.name || ''} onChange={e => handleUpdateSelectedElementData('name', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="nftCollection" className="text-xs">Collection Name</Label>
+                              <Input id="nftCollection" value={selectedElement.data.collection || ''} onChange={e => handleUpdateSelectedElementData('collection', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="nftPrice" className="text-xs">Price</Label>
+                              <Input id="nftPrice" value={selectedElement.data.price || ''} onChange={e => handleUpdateSelectedElementData('price', e.target.value)} placeholder="e.g., 0.5 ETH or $100" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                                <Label htmlFor="nftDataAiHint" className="text-xs">AI Image Hint</Label>
+                                <Input id="nftDataAiHint" value={selectedElement.data['data-ai-hint'] || ''} onChange={e => handleUpdateSelectedElementData('data-ai-hint', e.target.value)} placeholder="e.g., pixel art" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
                       {selectedElement && selectedElement.type === 'Section' && (
                         <AccordionItem value="section_styles">
                           <AccordionTrigger className="text-sm px-2 py-2.5">Section Styles</AccordionTrigger>
@@ -2008,10 +2405,11 @@ export default function LandingPageGenerator() {
                               </Label>
                               <Input
                                 id="sectionFillColor"
-                                type="color"
-                                value={selectedElement.data.backgroundColor || '#FFFFFF'}
-                                onChange={(e) => handleUpdateSelectedElementData('backgroundColor', e.target.value === '#FFFFFF' || e.target.value === '#000000' ? undefined : e.target.value)}
-                                className="h-8 w-10 p-0.5 bg-background"
+                                type="text" 
+                                value={selectedElement.data.backgroundColor || ''}
+                                onChange={(e) => handleUpdateSelectedElementData('backgroundColor', e.target.value)}
+                                className="h-8 w-24 p-0.5 bg-background text-xs"
+                                placeholder="#FFFFFF or bg-gray-100"
                               />
                             </div>
                              <div>
@@ -2024,6 +2422,177 @@ export default function LandingPageGenerator() {
                                   className="h-8 mt-1 bg-background text-xs"
                                 />
                               </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                      {selectedElement && selectedElement.type === 'BadgeElement' && (
+                        <AccordionItem value="badge_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div>
+                              <Label htmlFor="badgeText" className="text-xs">Text</Label>
+                              <Input id="badgeText" value={selectedElement.data.text || ''} onChange={e => handleUpdateSelectedElementData('text', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="badgeVariant" className="text-xs">Variant</Label>
+                              <Select value={selectedElement.data.variant || 'default'} onValueChange={v => handleUpdateSelectedElementData('variant', v as BadgeVariant)}>
+                                <SelectTrigger id="badgeVariant" className="h-8 mt-1 bg-background text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default" className="text-xs">Default</SelectItem>
+                                  <SelectItem value="secondary" className="text-xs">Secondary</SelectItem>
+                                  <SelectItem value="destructive" className="text-xs">Destructive</SelectItem>
+                                  <SelectItem value="outline" className="text-xs">Outline</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                      {selectedElement && selectedElement.type === 'ProgressElement' && (
+                        <AccordionItem value="progress_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div>
+                              <Label htmlFor="progressValue" className="text-xs">Value (0-100)</Label>
+                              <Input id="progressValue" type="number" min="0" max="100" value={selectedElement.data.value || 0} onChange={e => handleUpdateSelectedElementData('value', parseInt(e.target.value, 10))} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                       {selectedElement && selectedElement.type === 'SkeletonElement' && (
+                        <AccordionItem value="skeleton_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div>
+                              <Label htmlFor="skeletonWidth" className="text-xs">Width (Tailwind)</Label>
+                              <Input id="skeletonWidth" value={selectedElement.data.width || 'w-full'} onChange={e => handleUpdateSelectedElementData('width', e.target.value)} placeholder="e.g. w-32, w-1/2" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                             <div>
+                              <Label htmlFor="skeletonHeight" className="text-xs">Height (Tailwind)</Label>
+                              <Input id="skeletonHeight" value={selectedElement.data.height || 'h-4'} onChange={e => handleUpdateSelectedElementData('height', e.target.value)} placeholder="e.g. h-8, h-20" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="skeletonClassName" className="text-xs">Extra Classes</Label>
+                              <Input id="skeletonClassName" value={selectedElement.data.className || ''} onChange={e => handleUpdateSelectedElementData('className', e.target.value)} placeholder="e.g. rounded-full" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                       {selectedElement && selectedElement.type === 'Alert' && (
+                        <AccordionItem value="alert_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div>
+                              <Label htmlFor="alertTitle" className="text-xs">Title</Label>
+                              <Input id="alertTitle" value={(selectedElement.data as AlertElementData).title || ''} onChange={e => handleUpdateSelectedElementData('title', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                             <div>
+                              <Label htmlFor="alertDescription" className="text-xs">Description</Label>
+                              <Textarea id="alertDescription" value={(selectedElement.data as AlertElementData).description || ''} onChange={e => handleUpdateSelectedElementData('description', e.target.value)} className="h-16 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="alertVariant" className="text-xs">Variant</Label>
+                              <Select value={(selectedElement.data as AlertElementData).variant || 'default'} onValueChange={v => handleUpdateSelectedElementData('variant', v as AlertElementData['variant'])}>
+                                <SelectTrigger id="alertVariant" className="h-8 mt-1 bg-background text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default" className="text-xs">Default</SelectItem>
+                                  <SelectItem value="destructive" className="text-xs">Destructive</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                                <Label htmlFor="alertIcon" className="text-xs">Icon (Lucide Name)</Label>
+                                <Input id="alertIcon" value={(selectedElement.data as AlertElementData).iconName || 'Info'} onChange={e => handleUpdateSelectedElementData('iconName', e.target.value)} placeholder="e.g. TriangleAlert" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                      {selectedElement && selectedElement.type === 'ApiDataDisplay' && (
+                        <AccordionItem value="api_data_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div>
+                              <Label htmlFor="apiDataTitle" className="text-xs">Display Title</Label>
+                              <Input id="apiDataTitle" value={(selectedElement.data as ApiDataDisplayData).title || ''} onChange={e => handleUpdateSelectedElementData('title', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <Label className="text-xs">Data Items</Label>
+                            {(selectedElement.data.items as ApiDataItem[] || []).map((item, index) => (
+                              <div key={item.id} className="p-2 border rounded bg-muted/20 space-y-1.5">
+                                <div className="flex justify-between items-center">
+                                   <Label className="text-xs font-medium">Item #{index + 1}</Label>
+                                   <Button variant="ghost" size="icon" className="h-5 w-5 text-destructive" onClick={() => {
+                                     const updatedItems = (selectedElement.data.items as ApiDataItem[]).filter(i => i.id !== item.id);
+                                     handleUpdateApiDataItems(selectedElementId!, updatedItems);
+                                   }}><Trash2 className="h-3 w-3" /></Button>
+                                </div>
+                                <Input placeholder="Key" value={item.key} onChange={e => {
+                                  const updatedItems = (selectedElement.data.items as ApiDataItem[]).map(i => i.id === item.id ? {...i, key: e.target.value} : i);
+                                  handleUpdateApiDataItems(selectedElementId!, updatedItems);
+                                }} className="h-7 text-xs bg-background" />
+                                <Input placeholder="Value" value={item.value} onChange={e => {
+                                   const updatedItems = (selectedElement.data.items as ApiDataItem[]).map(i => i.id === item.id ? {...i, value: e.target.value} : i);
+                                   handleUpdateApiDataItems(selectedElementId!, updatedItems);
+                                }} className="h-7 text-xs bg-background" />
+                              </div>
+                            ))}
+                            <Button variant="outline" size="xs" onClick={() => {
+                                const newItem: ApiDataItem = { id: uuidv4(), key: 'New Key', value: 'New Value'};
+                                const updatedItems = [...((selectedElement.data.items as ApiDataItem[]) || []), newItem];
+                                handleUpdateApiDataItems(selectedElementId!, updatedItems);
+                            }}>Add Item</Button>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                      {selectedElement && selectedElement.type === 'TransactionStatusDisplay' && (
+                        <AccordionItem value="tx_status_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                             <div>
+                              <Label htmlFor="txStatus" className="text-xs">Status</Label>
+                              <Select value={(selectedElement.data as TransactionStatusData).status || 'unknown'} onValueChange={v => handleUpdateSelectedElementData('status', v as TransactionStatus)}>
+                                <SelectTrigger id="txStatus" className="h-8 mt-1 bg-background text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="pending" className="text-xs">Pending</SelectItem>
+                                  <SelectItem value="success" className="text-xs">Success</SelectItem>
+                                  <SelectItem value="failed" className="text-xs">Failed</SelectItem>
+                                  <SelectItem value="unknown" className="text-xs">Unknown</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="txId" className="text-xs">Transaction ID</Label>
+                              <Input id="txId" value={(selectedElement.data as TransactionStatusData).transactionId || ''} onChange={e => handleUpdateSelectedElementData('transactionId', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                            <div>
+                              <Label htmlFor="txMessage" className="text-xs">Message</Label>
+                              <Input id="txMessage" value={(selectedElement.data as TransactionStatusData).message || ''} onChange={e => handleUpdateSelectedElementData('message', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
+                      {selectedElement && selectedElement.type === 'GovernanceProposalCard' && (
+                        <AccordionItem value="proposal_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div><Label htmlFor="propTitle" className="text-xs">Title</Label><Input id="propTitle" value={(selectedElement.data as GovernanceProposalData).title || ''} onChange={e => handleUpdateSelectedElementData('title', e.target.value)} className="h-8 mt-1 bg-background text-xs" /></div>
+                            <div><Label htmlFor="propProposer" className="text-xs">Proposer</Label><Input id="propProposer" value={(selectedElement.data as GovernanceProposalData).proposer || ''} onChange={e => handleUpdateSelectedElementData('proposer', e.target.value)} className="h-8 mt-1 bg-background text-xs" /></div>
+                            <div><Label htmlFor="propSummary" className="text-xs">Summary</Label><Textarea id="propSummary" value={(selectedElement.data as GovernanceProposalData).summary || ''} onChange={e => handleUpdateSelectedElementData('summary', e.target.value)} className="h-16 mt-1 bg-background text-xs" /></div>
+                            <div>
+                              <Label htmlFor="propStatus" className="text-xs">Status</Label>
+                              <Select value={(selectedElement.data as GovernanceProposalData).status || 'pending'} onValueChange={v => handleUpdateSelectedElementData('status', v as ProposalStatus)}>
+                                <SelectTrigger id="propStatus" className="h-8 mt-1 bg-background text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="active" className="text-xs">Active</SelectItem>
+                                  <SelectItem value="passed" className="text-xs">Passed</SelectItem>
+                                  <SelectItem value="failed" className="text-xs">Failed</SelectItem>
+                                  <SelectItem value="executed" className="text-xs">Executed</SelectItem>
+                                  <SelectItem value="pending" className="text-xs">Pending</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div><Label htmlFor="propEndDate" className="text-xs">End Date/Time</Label><Input id="propEndDate" value={(selectedElement.data as GovernanceProposalData).endDate || ''} onChange={e => handleUpdateSelectedElementData('endDate', e.target.value)} className="h-8 mt-1 bg-background text-xs" /></div>
+                            <div><Label htmlFor="propVotesFor" className="text-xs">Votes For</Label><Input id="propVotesFor" value={(selectedElement.data as GovernanceProposalData).votesFor || ''} onChange={e => handleUpdateSelectedElementData('votesFor', e.target.value)} className="h-8 mt-1 bg-background text-xs" /></div>
+                            <div><Label htmlFor="propVotesAgainst" className="text-xs">Votes Against</Label><Input id="propVotesAgainst" value={(selectedElement.data as GovernanceProposalData).votesAgainst || ''} onChange={e => handleUpdateSelectedElementData('votesAgainst', e.target.value)} className="h-8 mt-1 bg-background text-xs" /></div>
                           </AccordionContent>
                         </AccordionItem>
                       )}
@@ -2168,11 +2737,12 @@ export default function LandingPageGenerator() {
                             </Label>
                             <Input
                               id="prop-fill"
-                              type="color"
-                              value={currentPropFillColor || '#FFFFFF'}
+                              type="text"
+                              value={currentPropFillColor || ''}
                               onChange={e => handleFillColorChange(e.target.value)}
-                              className="h-8 w-10 p-0.5 bg-background"
+                              className="h-8 w-24 p-0.5 bg-background text-xs"
                               disabled={!!selectedElementId && selectedElement?.type !== 'Section'}
+                              placeholder="#FFFFFF or bg-gray-100"
                             />
                          </div>
                         <div className="flex items-center gap-2">
@@ -2181,10 +2751,11 @@ export default function LandingPageGenerator() {
                             </Label>
                             <Input
                                 id="prop-body-bg-fill"
-                                type="color"
-                                value={propBodyBackgroundColor || '#FFFFFF'}
+                                type="text"
+                                value={propBodyBackgroundColor || ''}
                                 onChange={e => handleBodyFillColorChange(e.target.value)}
-                                className="h-8 w-10 p-0.5 bg-background"
+                                className="h-8 w-24 p-0.5 bg-background text-xs"
+                                placeholder="#FFFFFF or bg-neutral-900"
                             />
                         </div>
                          <div>

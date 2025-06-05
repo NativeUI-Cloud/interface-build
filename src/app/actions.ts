@@ -6,6 +6,7 @@
 import { generateUiCode, type GenerateUiCodeInput } from '@/ai/flows/generate-ui-code';
 import { generateLandingPageCode, type GenerateLandingPageCodeOutput } from '@/ai/flows/generate-landing-page-code';
 import type { GenerateLandingPageCodeInput as ILandingPageInput } from '@/lib/types';
+import { landingPageChat, type LandingPageChatInput, type LandingPageChatOutput } from '@/ai/flows/landing-page-chat-flow';
 
 
 export async function handleGenerateCodeAction(description: string): Promise<{ code: string | null; error: string | null }> {
@@ -64,3 +65,24 @@ export async function handleGenerateLandingPageCodeAction(
   }
 }
 
+export async function handleLandingPageChatAction(
+  input: LandingPageChatInput
+): Promise<LandingPageChatOutput> {
+  if (!input.userInput || input.userInput.trim() === "") {
+    return { aiResponse: '', error: "User input cannot be empty." };
+  }
+
+  try {
+    // No need to manually construct qualifiedModelId here if it's already in input.selectedModelIdentifier
+    const result = await landingPageChat(input);
+    return result;
+  } catch (error: any) {
+    console.error("Error in landing page chat action:", error);
+    return { 
+      aiResponse: '', 
+      error: error.message || 'Failed to process chat message with AI for landing page.' 
+    };
+  }
+}
+
+    

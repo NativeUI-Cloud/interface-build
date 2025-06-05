@@ -7,3 +7,7 @@ config();
 // import '@/ai/flows/process-chat-message-flow.ts';
 // import '@/ai/flows/general-assistant-flow.ts';
 // import '@/ai/flows/generate-landing-page-code.ts'; // Temporarily commented out for diagnosis
+import '@/ai/flows/landing-page-chat-flow.ts';
+
+
+    
