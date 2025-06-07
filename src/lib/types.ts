@@ -1,3 +1,4 @@
+
 import type React from 'react';
 
 export interface ToolConfigBase {
@@ -372,12 +373,17 @@ export interface FooterColumn {
   title?: string;
   links: FooterLink[];
 }
+export interface SocialLink {
+  id: string;
+  platform: 'twitter' | 'facebook' | 'linkedin' | 'instagram' | 'telegram' | 'discord' | string;
+  href: string;
+}
 export interface FooterData {
   copyrightText?: string;
   columns?: FooterColumn[];
   backgroundColor?: string;
   textColor?: string;
-  socialLinks?: { platform: 'twitter' | 'facebook' | 'linkedin' | 'instagram' | string; href: string }[];
+  socialLinks?: SocialLink[];
 }
 
 export interface AnnouncementBarData {
@@ -395,9 +401,14 @@ export interface AnnouncementBarData {
   buttonBorderColor?: string;
 }
 
+export type ButtonVariant = "default" | "destructive" | "outline" | "secondary" | "ghost" | "link";
+export type WalletType = 'generic' | 'metamask' | 'phantom' | 'solflare';
+
 export interface ConnectWalletButtonData {
     text?: string;
     className?: string;
+    buttonVariant?: ButtonVariant;
+    walletType?: WalletType;
 }
 
 export interface NftDisplayCardData {
@@ -508,13 +519,15 @@ export interface CanvasElement {
     alt?: string;
     width?: number;
     height?: number;
-    variant?: string | BadgeVariant | AlertElementData['variant']; // For Button, Alert, AnnouncementBar, Badge
+    variant?: string | BadgeVariant | AlertElementData['variant'] | ButtonVariant; // For Button, Alert, AnnouncementBar, Badge, ConnectWalletButton
     className?: string; // For Section general styling, custom classes
     'data-ai-hint'?: string;
     backgroundColor?: string; // General purpose background color
     textColor?: string; // General purpose text color
     linkColor?: string; // General purpose link color
     dismissible?: boolean; // For AnnouncementBar
+    buttonVariant?: ButtonVariant; // Specifically for ConnectWalletButton and regular Button if needed
+    walletType?: WalletType; // For ConnectWalletButton
     // For specific complex elements, they'll have their own structures
     reviews?: MarqueeReviewType[];
     lines?: TerminalLine[];
@@ -546,8 +559,8 @@ export interface CanvasElement {
     value?: number; // For Progress
     indicatorColor?: string; // For Progress
     // width, height, className already common for Skeleton
-    title?: string; // For Alert, ApiDataDisplay, GovernanceProposalCard
-    description?: string; // For Alert, FeatureItem, GovernanceProposalCard
+    // title?: string; // For Alert, ApiDataDisplay, GovernanceProposalCard, LogoCloud - Already general
+    // description?: string; // For Alert, FeatureItem, GovernanceProposalCard - Already general
     // iconName also for Alert
     // Web3 / API specific properties
     status?: TransactionStatus | ProposalStatus; // For TransactionStatus and GovernanceProposal
@@ -611,3 +624,12 @@ export interface LandingPageChatOutput {
   error?: string;
 }
 
+// For Landing Page Templates
+export interface LandingPageTemplate {
+  id: string;
+  name: string;
+  description: string;
+  icon?: React.ElementType; // e.g., Lucide icon
+  // Template data, id will be new when project is created, lastModified will be new
+  projectData: Omit<ProjectData, 'id' | 'lastModified'>;
+}

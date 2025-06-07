@@ -46,7 +46,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
-import type { CanvasElement, CanvasRow, HeroVideoData, MarqueeReviewType, TerminalLine as ITerminalLine, BentoFeature, AnimatedListItem as AnimatedListItemType, WebElementDefinition, Breakpoint as BreakpointType, HeaderElementData, GenerateLandingPageCodeInput, ProjectData, HtmlTag, TailwindFontSize, TextAlignment, TestimonialCardData, FeatureItemData, LogoCloudData, FooterData, LogoItem, FooterColumn, AnnouncementBarData, LandingPageChatInput, ConnectWalletButtonData, NftDisplayCardData, TokenInfoDisplayData, RoadmapTimelineData, RoadmapPhase, BadgeVariant, BadgeElementData, SeparatorElementData, ProgressElementData, SkeletonElementData, AlertElementData, ApiDataDisplayData, ApiDataItem, TransactionStatusData, TransactionStatus, GovernanceProposalData, ProposalStatus } from '@/lib/types';
+import type { CanvasElement, CanvasRow, HeroVideoData, MarqueeReviewType, TerminalLine as ITerminalLine, BentoFeature, AnimatedListItem as AnimatedListItemType, WebElementDefinition, Breakpoint as BreakpointType, HeaderElementData, GenerateLandingPageCodeInput, ProjectData, HtmlTag, TailwindFontSize, TextAlignment, TestimonialCardData, FeatureItemData, LogoCloudData, FooterData, LogoItem, FooterColumn, AnnouncementBarData, LandingPageChatInput, ConnectWalletButtonData, NftDisplayCardData, TokenInfoDisplayData, RoadmapTimelineData, RoadmapPhase, BadgeVariant, BadgeElementData, SeparatorElementData, ProgressElementData, SkeletonElementData, AlertElementData, ApiDataDisplayData, ApiDataItem, TransactionStatusData, TransactionStatus, GovernanceProposalData, ProposalStatus, ButtonVariant, WalletType } from '@/lib/types';
 import { handleGenerateLandingPageCodeAction, handleLandingPageChatAction } from '@/app/actions';
 import { useTheme } from "next-themes";
 import * as LucideIcons from 'lucide-react';
@@ -199,6 +199,13 @@ const defaultAlertData: AlertElementData = {
   iconName: 'Info',
 }
 
+const walletTypeOptions: { value: WalletType; label: string }[] = [
+    { value: 'generic', label: 'Generic Wallet' },
+    { value: 'metamask', label: 'MetaMask (Ethereum)' },
+    { value: 'phantom', label: 'Phantom (Solana)' },
+    { value: 'solflare', label: 'Solflare (Solana)' },
+];
+
 const webElements: WebElementDefinition[] = [
   { name: 'Header', type: 'HeaderElement', previewComponent: <HeaderElement {...defaultHeaderData} />, initialData: defaultHeaderData, category: 'Layout', icon: PanelTop },
   { name: 'Section', type: 'Section', previewComponent: <div className="h-20 w-full bg-muted/50 rounded-md flex items-center justify-center text-muted-foreground text-sm p-2">Section: Add columns and elements inside.</div>, initialData: { className: 'py-12', backgroundColor: undefined }, category: 'Layout', icon: LayoutPanelLeft },
@@ -226,13 +233,13 @@ const webElements: WebElementDefinition[] = [
   { name: 'Team Section', type: 'TeamSection', previewComponent: <div className="h-20 w-full bg-muted/50 rounded-md flex items-center justify-center text-muted-foreground text-sm p-2 gap-2"><Avatar><AvatarFallback>TM</AvatarFallback></Avatar><Avatar><AvatarFallback>JD</AvatarFallback></Avatar></div>, initialData: { members: [] }, category: 'Content', icon: Users2 },
   { name: 'Contact Form', type: 'ContactForm', previewComponent: <div className="p-2 space-y-2 w-full"><Label htmlFor="email-prev">Email</Label><Input id="email-prev" type="email" placeholder="Email" /><Button size="sm">Submit</Button></div>, initialData: { fields: [] }, category: 'Interactive Elements', icon: Mail },
   { name: 'Call to Action Section', type: 'CtaSection', previewComponent: <div className="p-4 bg-primary/10 rounded-md text-center space-y-2"><h3 className="font-semibold">Call to Action!</h3><Button>Get Started</Button></div>, initialData: { title: "Ready to start?", buttonText: "Sign Up" }, category: 'Layout', icon: Megaphone },
-  { name: 'Testimonial Card', type: 'TestimonialCard', icon: MessageSquareQuote, category: 'Content', previewComponent: <Card className="w-full max-w-xs m-2"><CardHeader><Avatar className="mb-2"><AvatarImage src="https://avatar.vercel.sh/placeholder" alt="User" /><AvatarFallback>U</AvatarFallback></Avatar><CardTitle className="text-sm">John Doe</CardTitle><CardDescription className="text-xs">CEO, Example Inc.</CardDescription></CardHeader><CardContent><p className="text-sm italic">"This is a great product!"</p></CardContent></Card>, initialData: { quote: "This product changed my life!", authorName: "Jane Doe", authorRole: "Designer", avatarUrl: "https://avatar.vercel.sh/jane?size=64", cardBackgroundColor: undefined, textColor: undefined } as TestimonialCardData },
+  { name: 'Testimonial Card', type: 'TestimonialCard', icon: MessageSquareQuote, category: 'Content', previewComponent: <Card className="w-full max-w-xs m-2"><CardHeader><Avatar className="mb-2"><NextImage src="https://avatar.vercel.sh/placeholder" alt="User" width={40} height={40} data-ai-hint="user avatar" /><AvatarFallback>U</AvatarFallback></Avatar><CardTitle className="text-sm">John Doe</CardTitle><CardDescription className="text-xs">CEO, Example Inc.</CardDescription></CardHeader><CardContent><p className="text-sm italic">"This is a great product!"</p></CardContent></Card>, initialData: { quote: "This product changed my life!", authorName: "Jane Doe", authorRole: "Designer", avatarUrl: "https://avatar.vercel.sh/jane?size=64", cardBackgroundColor: undefined, textColor: undefined } as TestimonialCardData },
   { name: 'Feature Item', type: 'FeatureItem', icon: Lightbulb, category: 'Content', previewComponent: <div className="p-4 m-2 border rounded-lg text-center w-48"><Star className="mx-auto h-8 w-8 text-primary mb-2" /><h3 className="font-semibold text-sm">Feature Title</h3><p className="text-xs text-muted-foreground">Brief description of the feature.</p></div>, initialData: { iconName: 'Award', title: 'Amazing Feature', description: 'Explain why this feature is so amazing and beneficial to the user.', alignment: 'center' } as FeatureItemData },
   { name: 'Logo Cloud', type: 'LogoCloud', icon: Building, category: 'Content', previewComponent: <div className="p-4 m-2 border rounded-lg w-full max-w-md"><p className="text-center text-sm text-muted-foreground mb-2">Our Partners</p><div className="flex justify-around items-center"><LucideIcons.Figma className="h-8 w-8 text-muted-foreground/70" /><LucideIcons.Framer className="h-8 w-8 text-muted-foreground/70" /><LucideIcons.Sketch className="h-8 w-8 text-muted-foreground/70" /></div></div>, initialData: { title: 'Trusted By', logos: [{id: uuidv4(), src: "https://placehold.co/100x40/svg?text=Logo1&font=roboto", alt: "Client Logo 1"}, {id: uuidv4(), src: "https://placehold.co/120x30/svg?text=Logo2&font=open-sans", alt: "Client Logo 2"}], columns: 4 } as LogoCloudData },
   { name: 'Footer', type: 'Footer', icon: PanelBottom, category: 'Layout', previewComponent: <footer className="p-4 bg-muted/50 text-center text-xs w-full m-2 rounded"><p>&copy; 2024 Your Company</p></footer>, initialData: { copyrightText: `© ${new Date().getFullYear()} Your Company. All rights reserved.`, columns: [{id: uuidv4(), title: 'Links', links: [{id: uuidv4(), text: 'Privacy', href: '#'}, {id: uuidv4(), text: 'Terms', href: '#'}]}], backgroundColor: 'bg-muted', textColor: 'text-muted-foreground', socialLinks: [] } as FooterData },
   { name: 'Announcement Bar', icon: RadioTower, type: 'AnnouncementBar', category: 'Marketing Components', previewComponent: <AnnouncementBar text="Site-wide Announcement" linkText="Learn More" linkHref="#" variant="base" dismissible={false} />, initialData: { ...defaultAnnouncementBarData, text: "Site-wide Announcement", variant: 'base', dismissible: false } as AnnouncementBarData },
   // Web3 Components
-  { name: 'Connect Wallet Button', type: 'ConnectWalletButton', icon: Wallet, category: 'Web3 Components', previewComponent: <div className="p-2"><Button className="bg-blue-600 hover:bg-blue-700 text-white">Connect Wallet</Button></div>, initialData: { text: 'Connect Wallet', className: 'bg-blue-600 hover:bg-blue-700 text-white' } as ConnectWalletButtonData },
+  { name: 'Connect Wallet Button', type: 'ConnectWalletButton', icon: Wallet, category: 'Web3 Components', previewComponent: <div className="p-2"><Button className="bg-blue-600 hover:bg-blue-700 text-white">Connect Wallet</Button></div>, initialData: { text: 'Connect Wallet', className: 'bg-blue-600 hover:bg-blue-700 text-white', buttonVariant: 'default', walletType: 'generic' } as ConnectWalletButtonData },
   { name: 'NFT Display Card', type: 'NftDisplayCard', icon: ImageLucideIcon, category: 'Web3 Components', previewComponent: <Card className="w-40 m-2"><CardContent className="p-2"><NextImage src="https://placehold.co/150x150.png?text=NFT" alt="NFT Preview" width={134} height={134} data-ai-hint="nft art" className="rounded" /><p className="text-xs font-semibold mt-1">NFT Name</p><p className="text-xs text-muted-foreground">Collection</p></CardContent></Card>, initialData: { imageUrl: 'https://placehold.co/300x300.png?text=NFT', name: 'Cool NFT #123', collection: 'My Awesome Collection', price: '0.5 ETH', 'data-ai-hint': 'nft art' } as NftDisplayCardData },
   { name: 'Token Info Display', type: 'TokenInfoDisplay', icon: Coins, category: 'Web3 Components', previewComponent: <div className="p-2 border rounded-md text-sm"><p><strong>Token:</strong> XYZ</p><p><strong>Price:</strong> $1.23</p></div>, initialData: { tokenSymbol: 'XYZ', price: '$0.00', marketCap: '$0' } as TokenInfoDisplayData },
   { name: 'Roadmap / Timeline', type: 'RoadmapTimeline', icon: GitMergeIcon, category: 'Web3 Components', previewComponent: <div className="p-2 border rounded-md text-sm"><p><strong>Phase 1:</strong> Launch</p><p><strong>Phase 2:</strong> Moon</p></div>, initialData: { phases: [{id: uuidv4(), title: 'Q1 - Launch', description: 'Initial product launch and community building.'}, {id: uuidv4(), title: 'Q2 - Growth', description: 'Expand features and user base.'}] } as RoadmapTimelineData },
@@ -255,6 +262,15 @@ const htmlTagOptions: { value: HtmlTag; label: string }[] = [
   { value: 'h4', label: 'Heading 4 (h4)' },
   { value: 'h5', label: 'Heading 5 (h5)' },
   { value: 'h6', label: 'Heading 6 (h6)' },
+];
+
+const buttonVariantOptions: { value: ButtonVariant; label: string }[] = [
+    { value: 'default', label: 'Default' },
+    { value: 'destructive', label: 'Destructive' },
+    { value: 'outline', label: 'Outline' },
+    { value: 'secondary', label: 'Secondary' },
+    { value: 'ghost', label: 'Ghost' },
+    { value: 'link', label: 'Link' },
 ];
 
 
@@ -875,7 +891,7 @@ export default function LandingPageGenerator() {
             </div>
           );
         case 'Button':
-          return <Button variant="default" className="my-2">{element.data.text || "Button"}</Button>;
+          return <Button variant={element.data.buttonVariant || 'default'} className="my-2">{element.data.text || "Button"}</Button>;
         case 'AnnouncementBar':
            const annData = element.data as AnnouncementBarData;
            return <AnnouncementBar {...annData} />;
@@ -1015,7 +1031,8 @@ export default function LandingPageGenerator() {
             </footer>
           );
         case 'ConnectWalletButton':
-          return <Button className={cn("my-2", element.data.className)}>{element.data.text || "Connect Wallet"}</Button>;
+          // In-editor rendering is just a visual button. Functional onClick is in published page.
+          return <Button variant={(element.data as ConnectWalletButtonData).buttonVariant || 'default'} className={cn("my-2", element.data.className)}>{element.data.text || "Connect Wallet"}</Button>;
         case 'NftDisplayCard':
           const nftData = element.data as NftDisplayCardData;
           return (
@@ -1584,6 +1601,7 @@ export default function LandingPageGenerator() {
         onCreateNewProject={handleNewPage}
         onSwitchToAiGenerator={() => setActiveView('ai-generator')}
         onSwitchToSettings={() => setActiveView('settings')}
+        loadAllProjectsMetadata={loadAllProjectsMetadata} 
       />
     );
   }
@@ -2237,6 +2255,49 @@ export default function LandingPageGenerator() {
                           </AccordionContent>
                         </AccordionItem>
                       )}
+                       {selectedElement && selectedElement.type === 'ConnectWalletButton' && (
+                        <AccordionItem value="connect_wallet_specific">
+                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
+                          <AccordionContent className="px-2 pb-3 space-y-3">
+                            <div>
+                              <Label htmlFor="cwButtonText" className="text-xs">Button Text</Label>
+                              <Input id="cwButtonText" value={(selectedElement.data as ConnectWalletButtonData).text || ''} onChange={e => handleUpdateSelectedElementData('text', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                             <div>
+                              <Label htmlFor="cwButtonVariant" className="text-xs">Button Variant</Label>
+                              <Select value={(selectedElement.data as ConnectWalletButtonData).buttonVariant || 'default'} onValueChange={v => handleUpdateSelectedElementData('buttonVariant', v as ButtonVariant)}>
+                                <SelectTrigger id="cwButtonVariant" className="h-8 mt-1 bg-background text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {buttonVariantOptions.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                             <div>
+                              <Label htmlFor="cwWalletType" className="text-xs">Wallet Type</Label>
+                              <Select value={(selectedElement.data as ConnectWalletButtonData).walletType || 'generic'} onValueChange={v => handleUpdateSelectedElementData('walletType', v as WalletType)}>
+                                <SelectTrigger id="cwWalletType" className="h-8 mt-1 bg-background text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  {walletTypeOptions.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value} className="text-xs">{opt.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div>
+                              <Label htmlFor="cwButtonClassName" className="text-xs">Custom CSS Classes</Label>
+                              <Input id="cwButtonClassName" value={(selectedElement.data as ConnectWalletButtonData).className || ''} onChange={e => handleUpdateSelectedElementData('className', e.target.value)} placeholder="e.g., bg-purple-600 text-white" className="h-8 mt-1 bg-background text-xs" />
+                            </div>
+                             <Alert variant="default" className="mt-3">
+                                <Info className="h-4 w-4" />
+                                <AlertDescription className="text-xs">
+                                  This button attempts a basic wallet connection on the published page. Full wallet integration (state management, error handling, various SDKs) requires custom client-side coding in your Next.js project.
+                                </AlertDescription>
+                              </Alert>
+                          </AccordionContent>
+                        </AccordionItem>
+                      )}
                       {selectedElement && selectedElement.type === 'TokenInfoDisplay' && (
                         <AccordionItem value="token_info_specific">
                           <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
@@ -2353,21 +2414,7 @@ export default function LandingPageGenerator() {
                           </AccordionContent>
                         </AccordionItem>
                       )}
-                       {selectedElement && selectedElement.type === 'ConnectWalletButton' && (
-                        <AccordionItem value="connect_wallet_specific">
-                          <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>
-                          <AccordionContent className="px-2 pb-3 space-y-3">
-                            <div>
-                              <Label htmlFor="cwButtonText" className="text-xs">Button Text</Label>
-                              <Input id="cwButtonText" value={selectedElement.data.text || ''} onChange={e => handleUpdateSelectedElementData('text', e.target.value)} className="h-8 mt-1 bg-background text-xs" />
-                            </div>
-                            <div>
-                              <Label htmlFor="cwButtonClassName" className="text-xs">Custom CSS Classes</Label>
-                              <Input id="cwButtonClassName" value={selectedElement.data.className || ''} onChange={e => handleUpdateSelectedElementData('className', e.target.value)} placeholder="e.g., bg-purple-600 text-white" className="h-8 mt-1 bg-background text-xs" />
-                            </div>
-                          </AccordionContent>
-                        </AccordionItem>
-                      )}
+                      
                       {selectedElement && selectedElement.type === 'NftDisplayCard' && (
                         <AccordionItem value="nft_card_specific">
                           <AccordionTrigger className="text-sm px-2 py-2.5">{selectedElement.name} Properties</AccordionTrigger>

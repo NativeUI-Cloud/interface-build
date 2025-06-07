@@ -11,6 +11,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Projector, Search, Plus, Edit3, Trash2, MoreHorizontal, Globe, Copy, Sparkles, Settings, LayoutGrid } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
+import ProjectTemplatesModal from './ProjectTemplatesModal'; // Import the new modal
+import type { ProjectData, LandingPageTemplate } from '@/lib/types'; // Import types
+import { v4 as uuidv4 } from 'uuid'; // For generating new project IDs
 
 interface ProjectMetadata {
   id: string;
@@ -25,6 +28,7 @@ interface ProjectDashboardProps {
   onCreateNewProject: () => void;
   onSwitchToAiGenerator: () => void;
   onSwitchToSettings: () => void;
+  loadAllProjectsMetadata: () => ProjectMetadata[]; // Added prop
 }
 
 export default function ProjectDashboard({
@@ -34,9 +38,11 @@ export default function ProjectDashboard({
   onCreateNewProject,
   onSwitchToAiGenerator,
   onSwitchToSettings,
+  loadAllProjectsMetadata, // Destructure new prop
 }: ProjectDashboardProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
+  const [isTemplatesModalOpen, setIsTemplatesModalOpen] = useState(false); // State for new modal
 
   const filteredProjects = projects.filter(project =>
     project.title.toLowerCase().includes(searchTerm.toLowerCase())
@@ -57,122 +63,173 @@ export default function ProjectDashboard({
     });
   };
 
+  const handleOpenTemplatesModal = () => {
+    setIsTemplatesModalOpen(true);
+  };
+
+  const handleTemplateSelect = (templateProjectData: Omit<ProjectData, 'id' | 'lastModified'>, templateName: string) => {
+    const newProjectId = uuidv4();
+    const newProjectFromTemplate: ProjectData = {
+      ...templateProjectData,
+      id: newProjectId,
+      pageTitle: `Copy of ${templateProjectData.pageTitle || templateName}`,
+      lastModified: new Date().toISOString(),
+      canvasRows: templateProjectData.canvasRows.map(row => ({
+        ...row,
+        id: uuidv4(),
+        elements: row.elements.map(el => ({
+          ...el,
+          id: uuidv4(),
+          data: JSON.parse(JSON.stringify(el.data || {})),
+        })),
+      })),
+    };
+
+    try {
+      localStorage.setItem(`project-${newProjectId}`, JSON.stringify(newProjectFromTemplate));
+      loadAllProjectsMetadata(); // Refresh the project list shown in the dashboard
+      toast({
+        title: "Template Imported",
+        description: `A new project "${newProjectFromTemplate.pageTitle}" has been created.`,
+      });
+      onEditProject(newProjectId); // Automatically open the new project for editing
+    } catch (error) {
+      console.error("Error importing template:", error);
+      toast({ title: "Import Error", description: "Could not create project from template.", variant: "destructive" });
+    }
+    setIsTemplatesModalOpen(false);
+  };
+
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground">
-      <header className="p-4 border-b border-border flex-shrink-0 flex justify-between items-center bg-card shadow-sm h-16">
-        <div className="flex items-center gap-2">
-          <LayoutGrid className="h-7 w-7 text-primary" />
-          <h1 className="text-xl font-semibold">Landing Page Projects</h1>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button onClick={onSwitchToAiGenerator} variant="outline" size="sm">
-            <Sparkles className="mr-2 h-4 w-4" /> AI Generator
-          </Button>
-          <Button onClick={onSwitchToSettings} variant="outline" size="sm">
-            <Settings className="mr-2 h-4 w-4" /> Settings
-          </Button>
-          <Button onClick={onCreateNewProject} size="sm">
-            <Plus className="mr-2 h-4 w-4" /> New Project
-          </Button>
-        </div>
-      </header>
-
-      <div className="p-4 border-b border-border">
-        <div className="relative max-w-md mx-auto">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search projects..."
-            className="pl-10 h-10 bg-background"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-      </div>
-
-      <ScrollArea className="flex-grow p-4 md:p-6 lg:p-8">
-        {filteredProjects.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
-            <Projector className="h-24 w-24 mb-6 text-gray-400" />
-            <h2 className="text-2xl font-semibold mb-2">No Projects Yet</h2>
-            <p className="mb-6 max-w-sm">
-              {searchTerm
-                ? `No projects found matching "${searchTerm}". Try a different search or create a new project.`
-                : "It looks like you haven't created any landing page projects. Click 'New Project' to get started!"}
-            </p>
-            <Button onClick={onCreateNewProject} size="lg">
-              <Plus className="mr-2 h-5 w-5" /> Create Your First Project
+    <>
+      <div className="flex flex-col h-screen bg-background text-foreground">
+        <header className="p-4 border-b border-border flex-shrink-0 flex justify-between items-center bg-card shadow-sm h-16">
+          <div className="flex items-center gap-2">
+            <LayoutGrid className="h-7 w-7 text-primary" />
+            <h1 className="text-xl font-semibold">Landing Page Projects</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button onClick={handleOpenTemplatesModal} variant="outline" size="sm">
+              <LayoutGrid className="mr-2 h-4 w-4" /> Templates
+            </Button>
+            <Button onClick={onSwitchToAiGenerator} variant="outline" size="sm">
+              <Sparkles className="mr-2 h-4 w-4" /> AI Generator
+            </Button>
+            <Button onClick={onSwitchToSettings} variant="outline" size="sm">
+              <Settings className="mr-2 h-4 w-4" /> Settings
+            </Button>
+            <Button onClick={onCreateNewProject} size="sm">
+              <Plus className="mr-2 h-4 w-4" /> New Project
             </Button>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {filteredProjects.map((project) => (
-              <Card key={project.id} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200">
-                <CardHeader className="p-4 cursor-pointer" onClick={() => onEditProject(project.id)}>
-                  <div className="w-full aspect-[4/3] bg-muted rounded-md mb-3 flex items-center justify-center">
-                    <LayoutGrid className="h-12 w-12 text-muted-foreground/50" />
-                  </div>
-                  <CardTitle className="text-base font-semibold truncate" title={project.title}>
-                    {project.title}
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Modified {formatDistanceToNow(new Date(project.lastModified), { addSuffix: true })}
-                  </CardDescription>
-                </CardHeader>
-                <CardFooter className="p-3 border-t mt-auto flex justify-between items-center">
-                  <Button variant="default" size="sm" className="flex-1 mr-2" onClick={() => onEditProject(project.id)}>
-                    <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Edit
-                  </Button>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handlePreviewProject(project.id)}>
-                        <Globe className="mr-2 h-4 w-4" /> Preview
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => handleCopyLink(project.id)}>
-                        <Copy className="mr-2 h-4 w-4" /> Copy Link
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                           <DropdownMenuItem
-                            onSelect={(e) => e.preventDefault()} // Prevent closing dropdown
-                            className="text-destructive focus:bg-destructive/10 focus:text-destructive"
-                          >
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </DropdownMenuItem>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              This will permanently delete the project "{project.title}". This action cannot be undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => onDeleteProject(project.id)}
-                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                            >
-                              Delete Project
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </CardFooter>
-              </Card>
-            ))}
+        </header>
+
+        <div className="p-4 border-b border-border">
+          <div className="relative max-w-md mx-auto">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search projects..."
+              className="pl-10 h-10 bg-background"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
-        )}
-      </ScrollArea>
-    </div>
+        </div>
+
+        <ScrollArea className="flex-grow p-4 md:p-6 lg:p-8">
+          {filteredProjects.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center text-muted-foreground">
+              <Projector className="h-24 w-24 mb-6 text-gray-400" />
+              <h2 className="text-2xl font-semibold mb-2">No Projects Yet</h2>
+              <p className="mb-6 max-w-sm">
+                {searchTerm
+                  ? `No projects found matching "${searchTerm}". Try a different search, create a new project, or use a template!`
+                  : "It looks like you haven't created any landing page projects. Click 'New Project' or 'Templates' to get started!"}
+              </p>
+              <div className="flex gap-2">
+                <Button onClick={onCreateNewProject} size="lg">
+                  <Plus className="mr-2 h-5 w-5" /> Create New Project
+                </Button>
+                 <Button onClick={handleOpenTemplatesModal} size="lg" variant="outline">
+                  <LayoutGrid className="mr-2 h-5 w-5" /> Use a Template
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+              {filteredProjects.map((project) => (
+                <Card key={project.id} className="flex flex-col overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-200">
+                  <CardHeader className="p-4 cursor-pointer" onClick={() => onEditProject(project.id)}>
+                    <div className="w-full aspect-[4/3] bg-muted rounded-md mb-3 flex items-center justify-center">
+                      <LayoutGrid className="h-12 w-12 text-muted-foreground/50" />
+                    </div>
+                    <CardTitle className="text-base font-semibold truncate" title={project.title}>
+                      {project.title}
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Modified {formatDistanceToNow(new Date(project.lastModified), { addSuffix: true })}
+                    </CardDescription>
+                  </CardHeader>
+                  <CardFooter className="p-3 border-t mt-auto flex justify-between items-center">
+                    <Button variant="default" size="sm" className="flex-1 mr-2" onClick={() => onEditProject(project.id)}>
+                      <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Edit
+                    </Button>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handlePreviewProject(project.id)}>
+                          <Globe className="mr-2 h-4 w-4" /> Preview
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => handleCopyLink(project.id)}>
+                          <Copy className="mr-2 h-4 w-4" /> Copy Link
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <DropdownMenuItem
+                              onSelect={(e) => e.preventDefault()} // Prevent closing dropdown
+                              className="text-destructive focus:bg-destructive/10 focus:text-destructive"
+                            >
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                            </DropdownMenuItem>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                This will permanently delete the project "{project.title}". This action cannot be undone.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancel</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => onDeleteProject(project.id)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Delete Project
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </CardFooter>
+                </Card>
+              ))}
+            </div>
+          )}
+        </ScrollArea>
+      </div>
+      <ProjectTemplatesModal
+        isOpen={isTemplatesModalOpen}
+        onOpenChange={setIsTemplatesModalOpen}
+        onTemplateSelect={handleTemplateSelect}
+      />
+    </>
   );
 }
-

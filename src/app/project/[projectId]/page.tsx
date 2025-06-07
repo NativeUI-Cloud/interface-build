@@ -4,7 +4,7 @@
 
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import type { CanvasRow, CanvasElement, HeroVideoData, BentoFeature, AnimatedListItem as AnimatedListItemType, HeaderElementData, ProjectData, HtmlTag, TailwindFontSize, TextAlignment, AnnouncementBarData, NftDisplayCardData, TokenInfoDisplayData, RoadmapTimelineData, BadgeElementData, SeparatorElementData, ProgressElementData, SkeletonElementData, AlertElementData, ApiDataDisplayData, TransactionStatusData, GovernanceProposalData, ProposalStatus, TransactionStatus } from '@/lib/types';
+import type { CanvasRow, CanvasElement, HeroVideoData, BentoFeature, AnimatedListItem as AnimatedListItemType, HeaderElementData, ProjectData, HtmlTag, TailwindFontSize, TextAlignment, AnnouncementBarData, NftDisplayCardData, TokenInfoDisplayData, RoadmapTimelineData, BadgeElementData, SeparatorElementData, ProgressElementData, SkeletonElementData, AlertElementData, ApiDataDisplayData, TransactionStatusData, GovernanceProposalData, ProposalStatus, TransactionStatus, ButtonVariant, ConnectWalletButtonData, WalletType } from '@/lib/types';
 import { cn } from '@/lib/utils';
 
 // Import the same display components used in LandingPageGenerator
@@ -74,7 +74,7 @@ export default function PublishedProjectPage() {
             }
           }
         } else {
-          setError('Project not found. It might not have been published or was removed.');
+          setError('Project not found. It might not have been published, was removed, or the link is incorrect.');
         }
       } catch (e) {
         console.error("Error loading project from localStorage:", e);
@@ -83,7 +83,7 @@ export default function PublishedProjectPage() {
         setIsLoading(false);
       }
     } else {
-      setError('Project ID is missing.');
+      setError('Project ID is missing from the URL.');
       setIsLoading(false);
     }
 
@@ -94,9 +94,79 @@ export default function PublishedProjectPage() {
         if (bodyStyleTag) {
           bodyStyleTag.remove();
         }
+        // Optionally reset document.title if needed
+        // document.title = "NativeUI Builder"; 
       }
     };
   }, [projectId]);
+
+
+  const handleConnectWalletClick = (walletType?: WalletType) => {
+    const effectiveWalletType = walletType || 'generic';
+    console.log(`[PublishedPage] handleConnectWalletClick: Received walletType='${walletType}', Effective='${effectiveWalletType}'`);
+    
+    if (typeof window === 'undefined') {
+      console.warn('[PublishedPage] window object is undefined. Wallet connection cannot proceed.');
+      alert('Wallet connection cannot proceed (window object not found). This might happen during server-side rendering or in an unsupported environment.');
+      return;
+    }
+
+    const attemptConnection = async () => {
+      console.log(`[PublishedPage] Attempting connection for type: ${effectiveWalletType}`);
+      try {
+        switch (effectiveWalletType) {
+          case 'metamask':
+            console.log('[PublishedPage] Checking for MetaMask (window.ethereum)...');
+            if ((window as any).ethereum && (window as any).ethereum.isMetaMask) {
+              console.log('[PublishedPage] MetaMask found, requesting accounts via window.ethereum.request({ method: "eth_requestAccounts" })...');
+              await (window as any).ethereum.request({ method: 'eth_requestAccounts' });
+              console.log('[PublishedPage] MetaMask connection request sent.');
+              alert('MetaMask connection requested. Please check your MetaMask extension.');
+            } else {
+              console.warn('[PublishedPage] MetaMask not found (window.ethereum is not available or not MetaMask).');
+              alert('MetaMask is not installed or not accessible. Please install or enable it to connect.');
+            }
+            break;
+          case 'phantom':
+            console.log('[PublishedPage] Checking for Phantom (window.phantom.solana)...');
+            const phantomWallet = (window as any).phantom?.solana;
+            if (phantomWallet?.isPhantom) {
+              console.log('[PublishedPage] Phantom found, requesting connection via phantomWallet.connect()...');
+              await phantomWallet.connect();
+              console.log('[PublishedPage] Phantom connection request sent.');
+              alert('Phantom wallet connection requested. Please check your Phantom extension.');
+            } else {
+              console.warn('[PublishedPage] Phantom wallet not found (window.phantom.solana is not available or not Phantom).');
+              alert('Phantom wallet is not installed or not accessible. Please install or enable it to connect.');
+            }
+            break;
+          case 'solflare':
+            console.log('[PublishedPage] Checking for Solflare (window.solflare)...');
+            const solflareWallet = (window as any).solflare;
+            if (solflareWallet?.isSolflare) {
+              console.log('[PublishedPage] Solflare found, requesting connection via solflareWallet.connect()...');
+              await solflareWallet.connect();
+              console.log('[PublishedPage] Solflare connection request sent.');
+              alert('Solflare wallet connection requested. Please check your Solflare extension.');
+            } else {
+              console.warn('[PublishedPage] Solflare wallet not found (window.solflare is not available or not Solflare).');
+              alert('Solflare wallet is not installed or not accessible. Please install or enable it to connect.');
+            }
+            break;
+          case 'generic': 
+          default:
+            console.warn(`[PublishedPage] Reached default/generic case for walletType: '${walletType}'. This means the button was configured as 'Generic Wallet' or its type was not set/found in data. Displaying generic alert.`);
+            alert("This is a generic connect button. To connect to a specific wallet (MetaMask, Phantom, Solflare), please select the desired wallet type in the editor for this button and re-publish the page. If you already did, ensure the data was saved correctly.");
+            break;
+        }
+      } catch (err) {
+        console.error(`[PublishedPage] Error attempting to connect ${effectiveWalletType} wallet:`, err);
+        alert(`Error connecting wallet: ${(err as Error).message}. Check the browser console for more details.`);
+      }
+    };
+    attemptConnection();
+  };
+
 
   const renderElementContent = (element: CanvasElement) => {
     const tag = element.data.htmlTag || (element.type === 'Heading' ? 'h1' : 'p');
@@ -208,7 +278,7 @@ export default function PublishedProjectPage() {
          );
       case 'Heading':
       case 'TextBlock':
-        return React.createElement(tag, { className: cn("whitespace-pre-wrap", textClasses) }, textContent);
+        return React.createElement(tag, { className: cn("whitespace-pre-wrap", textClasses, element.data.className) }, textContent);
       case 'Image':
         return (
           <div className="my-2">
@@ -217,19 +287,32 @@ export default function PublishedProjectPage() {
               alt={element.data.alt || "Placeholder Image"}
               width={element.data.width || 600}
               height={element.data.height || 400}
-              className="max-w-full h-auto"
+              className={cn("max-w-full h-auto", element.data.className)}
               data-ai-hint={element.data['data-ai-hint'] || "image"}
             />
           </div>
         );
       case 'Button':
-        return <Button variant="default" className="my-2">{element.data.text || "Button"}</Button>;
+        return <Button variant={(element.data as ConnectWalletButtonData).buttonVariant || 'default'} className={cn("my-2", element.data.className)}>{element.data.text || "Button"}</Button>;
       case 'ConnectWalletButton':
-        return <Button className={cn("my-2", element.data.className)}>{element.data.text || "Connect Wallet"}</Button>;
+        const connectWalletData = element.data as ConnectWalletButtonData;
+        const currentElementId = element.id; // Capture element.id for logging
+        return (
+          <Button
+            variant={connectWalletData.buttonVariant || 'default'}
+            className={cn("my-2", connectWalletData.className)}
+            onClick={() => {
+              console.log(`[ConnectWalletButton OnClick] Element ID: ${currentElementId}, Element Data:`, JSON.parse(JSON.stringify(element.data)));
+              handleConnectWalletClick(connectWalletData.walletType);
+            }}
+          >
+            {connectWalletData.text || "Connect Wallet"}
+          </Button>
+        );
       case 'NftDisplayCard':
         const nftData = element.data as NftDisplayCardData;
         return (
-          <Card className="w-full max-w-xs my-2">
+          <Card className={cn("w-full max-w-xs my-2", element.data.className)}>
             <CardContent className="p-3">
               <Image
                 src={nftData.imageUrl || "https://placehold.co/300x300.png?text=NFT"}
@@ -247,15 +330,15 @@ export default function PublishedProjectPage() {
         );
       case 'TokenInfoDisplay':
         const tokenData = element.data as TokenInfoDisplayData;
-        return <div className="p-4 my-2 border rounded-md text-sm bg-muted/30"><p><strong>Token:</strong> {tokenData.tokenSymbol || 'N/A'}</p><p><strong>Price:</strong> {tokenData.price || 'N/A'}</p><p><strong>Market Cap:</strong> {tokenData.marketCap || 'N/A'}</p></div>;
+        return <div className={cn("p-4 my-2 border rounded-md text-sm bg-muted/30", element.data.className)}><p><strong>Token:</strong> {tokenData.tokenSymbol || 'N/A'}</p><p><strong>Price:</strong> {tokenData.price || 'N/A'}</p><p><strong>Market Cap:</strong> {tokenData.marketCap || 'N/A'}</p></div>;
       case 'RoadmapTimeline':
         const roadmapData = element.data as RoadmapTimelineData;
         return (
-            <div className="p-4 my-2 border rounded-md space-y-3 bg-muted/30">
+            <div className={cn("p-4 my-2 border rounded-md space-y-3 bg-muted/30", element.data.className)}>
                 {(roadmapData.phases || []).map(phase => (
                     <div key={phase.id}>
                         <h4 className="font-semibold text-sm">{phase.title || 'Phase Title'}</h4>
-                        <p className="text-xs text-muted-foreground">{phase.description || 'Phase description...'}</p>
+                        <p className="text-xs text-muted-foreground whitespace-pre-line">{phase.description || 'Phase description...'}</p>
                     </div>
                 ))}
                 {(!roadmapData.phases || roadmapData.phases.length === 0) && <p className="text-xs text-muted-foreground">Roadmap items go here.</p>}
@@ -263,14 +346,14 @@ export default function PublishedProjectPage() {
         );
       case 'BadgeElement':
         const badgeData = element.data as BadgeElementData;
-        return <Badge variant={badgeData.variant || 'default'} className="my-2">{ badgeData.text || 'Badge' }</Badge>;
+        return <Badge variant={badgeData.variant || 'default'} className={cn("my-2", element.data.className)}>{ badgeData.text || 'Badge' }</Badge>;
       case 'SeparatorElement':
         const separatorData = element.data as SeparatorElementData;
-        return <Separator orientation={separatorData.orientation || 'horizontal'} className="my-4" />;
+        return <Separator orientation={separatorData.orientation || 'horizontal'} className={cn("my-4", element.data.className)} />;
       case 'ProgressElement':
         const progressData = element.data as ProgressElementData;
         return (
-          <div className="my-2 w-full">
+          <div className={cn("my-2 w-full", element.data.className)}>
             <Progress value={progressData.value || 0} className={cn(progressData.backgroundColor)} />
           </div>
         );
@@ -281,7 +364,7 @@ export default function PublishedProjectPage() {
         const alertData = element.data as AlertElementData;
         const IconComp = alertData.iconName && (LucideIcons as any)[alertData.iconName] ? (LucideIcons as any)[alertData.iconName] : LucideIcons.Info;
         return (
-          <Alert variant={alertData.variant || 'default'} className="my-2">
+          <Alert variant={alertData.variant || 'default'} className={cn("my-2", element.data.className)}>
             <IconComp className="h-4 w-4" />
             {alertData.title && <AlertTitle>{alertData.title}</AlertTitle>}
             {alertData.description && <AlertDescription>{alertData.description}</AlertDescription>}
@@ -290,7 +373,7 @@ export default function PublishedProjectPage() {
       case 'ApiDataDisplay':
           const apiData = element.data as ApiDataDisplayData;
           return (
-            <Card className="my-2 w-full">
+            <Card className={cn("my-2 w-full", element.data.className)}>
               <CardHeader>
                 <CardTitle className="text-base">{apiData.title || "API Data"}</CardTitle>
               </CardHeader>
@@ -317,7 +400,7 @@ export default function PublishedProjectPage() {
           if (txData.status === 'success') { TxIcon = LucideIcons.CheckCircle2; txColor = "text-green-500"; }
           else if (txData.status === 'failed') { TxIcon = LucideIcons.AlertCircle; txColor = "text-red-500"; }
           return (
-            <div className={cn("p-4 my-2 border rounded-md text-sm flex items-center gap-3", txData.status === 'success' ? 'bg-green-500/10 border-green-500/30' : txData.status === 'failed' ? 'bg-red-500/10 border-red-500/30' : 'bg-blue-500/10 border-blue-500/30')}>
+            <div className={cn("p-4 my-2 border rounded-md text-sm flex items-center gap-3", txData.status === 'success' ? 'bg-green-500/10 border-green-500/30' : txData.status === 'failed' ? 'bg-red-500/10 border-red-500/30' : 'bg-blue-500/10 border-blue-500/30', element.data.className)}>
               <TxIcon className={cn("h-6 w-6", txColor)} />
               <div>
                 <p className={cn("font-semibold", txColor)}>
@@ -335,7 +418,7 @@ export default function PublishedProjectPage() {
           else if (proposalData.status === 'passed' || proposalData.status === 'executed') statusBadgeColor = "bg-green-500";
           else if (proposalData.status === 'failed') statusBadgeColor = "bg-red-500";
           return (
-            <Card className="my-2 w-full">
+            <Card className={cn("my-2 w-full", element.data.className)}>
               <CardHeader>
                 <div className="flex justify-between items-start">
                   <CardTitle className="text-base mb-1">{proposalData.title || "Proposal Title"}</CardTitle>
@@ -359,15 +442,27 @@ export default function PublishedProjectPage() {
   };
 
   if (isLoading) {
-    return <div className="flex items-center justify-center min-h-screen">Loading project...</div>;
+    return <div className="flex items-center justify-center min-h-screen bg-background"><LucideIcons.Loader2 className="h-8 w-8 animate-spin text-primary" /> <span className="ml-2">Loading project...</span></div>;
   }
 
   if (error) {
-    return <div className="flex items-center justify-center min-h-screen text-red-500">{error}</div>;
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen text-center p-4 bg-background">
+        <div className="bg-card p-8 sm:p-10 rounded-xl shadow-2xl max-w-md w-full">
+          <LucideIcons.FileX2 className="h-16 w-16 sm:h-20 sm:w-20 text-destructive mx-auto mb-5" />
+          <h2 className="text-xl sm:text-2xl font-semibold text-destructive mb-2">Project Not Found</h2>
+          <p className="text-muted-foreground mb-6 text-sm sm:text-base">{error}</p>
+          <Button onClick={() => window.location.href = '/'} size="lg" className="w-full">
+            <LucideIcons.LayoutDashboard className="mr-2 h-4 sm:h-5 w-4 sm:w-5" />
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   if (!projectData) {
-    return <div className="flex items-center justify-center min-h-screen">Project data could not be loaded.</div>;
+    return <div className="flex items-center justify-center min-h-screen bg-background">Project data could not be loaded.</div>;
   }
 
   const pageCanvasStyle: React.CSSProperties = {};
@@ -393,13 +488,14 @@ export default function PublishedProjectPage() {
             key={row.id}
             className={cn(
               "grid gap-4 my-0",
-              row.layout
+              row.layout,
+              row.className // Apply row-level custom classes
             )}
             style={{ backgroundColor: row.backgroundColor || 'transparent' }}
           >
             {row.elements.length === 0 && parseInt(row.layout.split('-')[2] || '1', 10) > 0 &&
               Array.from({ length: parseInt(row.layout.split('-')[2] || '1', 10) }).map((_, idx) => (
-                <div key={`placeholder-col-${idx}`} className="min-h-[50px] bg-neutral-100 dark:bg-neutral-800 rounded flex items-center justify-center text-neutral-400 text-sm">
+                <div key={`placeholder-col-${idx}`} className="min-h-[50px] bg-muted/10 dark:bg-muted/5 rounded flex items-center justify-center text-muted-foreground/50 text-sm">
                   Empty Column {idx + 1}
                 </div>
               ))
@@ -415,4 +511,4 @@ export default function PublishedProjectPage() {
     </div>
   );
 }
-
+    
