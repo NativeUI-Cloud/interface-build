@@ -7,6 +7,7 @@ import { generateUiCode, type GenerateUiCodeInput } from '@/ai/flows/generate-ui
 import { generateLandingPageCode, type GenerateLandingPageCodeOutput } from '@/ai/flows/generate-landing-page-code';
 import type { GenerateLandingPageCodeInput as ILandingPageInput } from '@/lib/types';
 import { landingPageChat, type LandingPageChatInput, type LandingPageChatOutput } from '@/ai/flows/landing-page-chat-flow';
+import { aiCodeChat, type AiCodeChatInput, type AiCodeChatOutput } from '@/ai/flows/ai-code-chat-flow';
 
 
 export async function handleGenerateCodeAction(description: string): Promise<{ code: string | null; error: string | null }> {
@@ -85,4 +86,22 @@ export async function handleLandingPageChatAction(
   }
 }
 
+export async function handleAiCodeChatAction(
+  input: AiCodeChatInput
+): Promise<AiCodeChatOutput> {
+  if (!input.description || input.description.trim() === "") {
+    return { code: null, explanation: null, error: "Description cannot be empty." };
+  }
+  try {
+    const result = await aiCodeChat(input);
+    return result;
+  } catch (error: any) {
+    console.error("Error in AI Code Chat action:", error);
+    return {
+      code: null,
+      explanation: null,
+      error: error.message || 'Failed to generate code with AI Code Chat.',
+    };
+  }
+}
     

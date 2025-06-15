@@ -20,6 +20,7 @@ import LoginModal from './LoginModal';
 import AgentTemplatesModal from './AgentTemplatesModal';
 import StartupChoiceModal from './StartupChoiceModal';
 import LandingPageGenerator from './LandingPageGenerator'; 
+import AiCodeChatView from './AiCodeChatView'; // Import new view
 import type { Node, StoredCredential, LLMModel, NodeData, Connection, Workflow, AnyToolConfig, CoinGeckoToolConfig, GitHubApiToolConfig, GoogleDriveToolConfig, DropboxToolConfig, GitLabToolConfig, TrelloToolConfig, BitqueryApiToolConfig, FirebaseToolConfig, NotionToolConfig, BlockchainDataToolConfig, EtherscanApiToolConfig, TheGraphToolConfig, ShopifyAdminToolConfig, PubMedSearchToolConfig, AgentTemplate } from '@/lib/types';
 import { getCredentialById, getCredentials } from '@/lib/credentialsStore';
 import { getAllChatModels, llmProviders, getProviderById } from '@/lib/llmProviders';
@@ -35,6 +36,7 @@ import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
 import { processChatMessage, type ProcessChatMessageInput } from '@/ai/flows/process-chat-message-flow';
 import { generalAssistantChat, type GeneralAssistantChatInput } from '@/ai/flows/general-assistant-flow';
+import { handleAiCodeChatAction } from '@/app/actions'; // Import new server action
 import { useDebounce } from '@/hooks/use-debounce';
 import { LayoutTemplate, WorkflowIcon } from 'lucide-react';
 
@@ -69,7 +71,7 @@ const PALETTE_PANEL_DEFAULT_SIZE = 25;
 
 
 export default function InterfaceBuilderClient() {
-  const [currentView, setCurrentView] = useState<'builder' | 'landingCreator' | null>(null);
+  const [currentView, setCurrentView] = useState<'builder' | 'landingCreator' | 'aiCodeChat' | null>(null);
   const [currentWorkflow, setCurrentWorkflow] = useState<Workflow | null>(null);
   const [isWorkflowNameModalOpen, setIsWorkflowNameModalOpen] = useState(false);
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -123,6 +125,11 @@ export default function InterfaceBuilderClient() {
   const [assistantMessages, setAssistantMessages] = useState<{ id: string; text: string; sender: 'user' | 'ai' | 'system' }[]>([]);
   const [isAssistantResponding, setIsAssistantResponding] = useState(false);
 
+  // For AI Code Chat View
+  const [aiCodeChatMessages, setAiCodeChatMessages] = useState<{ id: string; text: string; sender: 'user' | 'ai' | 'system' }[]>([]);
+  const [isAiCodeChatResponding, setIsAiCodeChatResponding] = useState(false);
+
+
   const mainPanelGroupRef = useRef<PanelGroupHandle>(null);
   const palettePanelRef = useRef<PanelHandle>(null);
   const assistantPanelRef = useRef<PanelHandle>(null);
@@ -175,14 +182,16 @@ export default function InterfaceBuilderClient() {
   }, [setCurrentWorkflow, setActiveNodes, setConnections, setZoomLevel, setIsWorkflowNameModalOpen, setIsCreatingNewWorkflow]);
 
 
-  const handleStartupChoice = (choice: 'builder' | 'landing') => {
+  const handleStartupChoice = (choice: 'builder' | 'landing' | 'aiCodeChat') => {
     setIsStartupChoiceModalOpen(false);
     if (choice === 'builder') {
       setCurrentView('builder');
       initializeBuilderEnvironment();
     } else if (choice === 'landing') {
       setCurrentView('landingCreator');
-      // toast({ title: "Landing Page Creator", description: "This feature is coming soon! For now, you're seeing a placeholder." });
+    } else if (choice === 'aiCodeChat') {
+      setCurrentView('aiCodeChat');
+      setAiCodeChatMessages([]); // Reset messages for new session
     }
   };
 
@@ -1638,6 +1647,28 @@ export default function InterfaceBuilderClient() {
     toast({ title: "More Options", description: `More options for node ${nodeId} (not implemented).`});
   };
 
+  const handleAiCodeChatSend = async (userInput: string) => {
+    if (!userInput.trim()) return;
+    setAiCodeChatMessages(prev => [...prev, { id: uuidv4(), text: userInput, sender: 'user' }]);
+    setIsAiCodeChatResponding(true);
+
+    try {
+      const result = await handleAiCodeChatAction({ description: userInput });
+      if (result.error) {
+        setAiCodeChatMessages(prev => [...prev, { id: uuidv4(), text: `AI Error: ${result.error}`, sender: 'system' }]);
+      } else if (result.code) {
+        setAiCodeChatMessages(prev => [...prev, { id: uuidv4(), text: result.code, sender: 'ai' }]);
+      } else {
+        setAiCodeChatMessages(prev => [...prev, { id: uuidv4(), text: "AI did not return any code for that request.", sender: 'system' }]);
+      }
+    } catch (error: any) {
+      console.error("Error calling handleAiCodeChatAction:", error);
+      setAiCodeChatMessages(prev => [...prev, { id: uuidv4(), text: `System: An unexpected error occurred: ${error.message}`, sender: 'system' }]);
+    } finally {
+      setIsAiCodeChatResponding(false);
+    }
+  };
+
 
   const nodeToConfigureForAiAgentModal = editingNodeId ? activeNodes.find(n => n.id === editingNodeId && n.type === 'AI_AGENT') : null;
   const nodeToConfigureForTelegramModal = editingTelegramNodeId ? activeNodes.find(n => n.id === editingTelegramNodeId && n.type === 'TELEGRAM_TRIGGER') : null;
@@ -1757,6 +1788,15 @@ export default function InterfaceBuilderClient() {
 
       {!isStartupChoiceModalOpen && currentView === 'landingCreator' && (
         <LandingPageGenerator />
+      )}
+      
+      {!isStartupChoiceModalOpen && currentView === 'aiCodeChat' && (
+        <AiCodeChatView
+          messages={aiCodeChatMessages}
+          onSendMessage={handleAiCodeChatSend}
+          isResponding={isAiCodeChatResponding}
+          onClose={() => setCurrentView('builder')} // Or 'dashboard' / null if preferred
+        />
       )}
 
 

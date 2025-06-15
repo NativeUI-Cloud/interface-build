@@ -37,7 +37,8 @@ const landingPageChatFlow = ai.defineFlow(
   async (input: LandingPageChatInput): Promise<LandingPageChatOutput> => {
     const { userInput, selectedModelIdentifier } = input;
 
-    const modelToUse = selectedModelIdentifier || 'googleai/gemini-1.5-pro-latest';
+    // Default to the Genkit instance's default model if none is selected by user
+    const modelToUse = selectedModelIdentifier || ai.defaultModel?.name || 'googleai/gemini-1.5-pro-latest';
     console.log(`[landingPageChatFlow] Attempting to use model: ${modelToUse}`);
 
     const systemPrompt = `You are an advanced AI Designer and Programmer Assistant integrated into a visual landing page builder.
@@ -101,14 +102,14 @@ Your primary role here is to act as if you are performing the design task, expla
                 } else if (e.status === 401) {
                     errorMsg = `DeepSeek API Key is invalid or does not have permissions for the model '${modelNameOnly}'. Your key starts with: ${deepSeekApiKey.substring(0, 5)}...`;
                 } else if (e.status === 429) {
-                    errorMsg = `DeepSeek API rate limit exceeded. Please try again later.`;
+                    errorMsg = `DeepSeek API rate limit exceeded. Please try again later. Visit their website for details on rate limits.`;
                 }
             }
             return { aiResponse: '', error: errorMsg };
         }
     }
 
-    // Default to Genkit ai.generate for other providers (like Google AI)
+    // Default to Genkit ai.generate for other providers (like Google AI, or OpenAI via Genkit plugin)
     try {
       const generateOptions: any = {
         model: modelToUse, 
@@ -136,12 +137,12 @@ Your primary role here is to act as if you are performing the design task, expla
       console.error('Error processing landing page chat message (Genkit path):', error);
       let errorMessage = error.message || 'Failed to get response from AI assistant.';
       
-      if (error.message && error.message.includes('[429 Too Many Requests]')) {
-        errorMessage = `You've exceeded the current quota for the selected model (${modelToUse}). Please check your plan and billing details with the AI provider. For more info, visit: https://ai.google.dev/gemini-api/docs/rate-limits (or the equivalent for your selected provider).`;
+      if (error.message && (error.message.includes('[429 Too Many Requests]') || error.message.includes('429'))) {
+        errorMessage = `You've exceeded the current quota for the selected model (${modelToUse}). Please check your plan and billing details with the AI provider (e.g., Google AI, OpenAI). For Google AI, visit: https://ai.google.dev/gemini-api/docs/rate-limits. For OpenAI: https://platform.openai.com/account/limits.`;
       } else if (error.cause && error.cause.message && (error.cause.message.includes('Plugin') || error.cause.message.includes('not found') || error.cause.message.includes('Could not load model'))) {
-          errorMessage = `The selected model (${selectedModelIdentifier}) could not be processed by Genkit. The required Genkit plugin (e.g., for Google AI, OpenAI, DeepSeek, Anthropic) might not be configured correctly in your genkit.ts or the model is not supported by the configured plugins. Please ensure the plugin for '${providerIdFromModel || 'the selected provider'}' is installed and initialized in genkit.ts.`;
+          errorMessage = `The selected model (${selectedModelIdentifier || modelToUse}) could not be processed by Genkit. The required Genkit plugin (e.g., for Google AI, OpenAI, DeepSeek, Anthropic) might not be configured correctly in your genkit.ts or the model is not supported by the configured plugins. Please ensure the plugin for '${providerIdFromModel || 'the selected provider'}' is installed and initialized in genkit.ts.`;
       } else if ((error.details && error.details.includes("NOT_FOUND")) || (error.message && error.message.includes("NOT_FOUND"))) {
-        errorMessage = `Model '${selectedModelIdentifier}' not found or access denied by Genkit. Ensure it's a valid model identifier for a configured Genkit plugin.`;
+        errorMessage = `Model '${selectedModelIdentifier || modelToUse}' not found or access denied by Genkit. Ensure it's a valid model identifier for a configured Genkit plugin.`;
       }
       return { 
         aiResponse: '', 

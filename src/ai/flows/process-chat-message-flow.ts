@@ -39,28 +39,30 @@ const processChatMessageFlow = ai.defineFlow(
     outputSchema: ProcessChatMessageOutputSchema,
   },
   async (input: ProcessChatMessageInput): Promise<ProcessChatMessageOutput> => {
-    const { userInput, agentSystemPrompt, modelId, apiKey, apiEndpoint, providerId } = input;
+    let { userInput, agentSystemPrompt, modelId, apiKey, apiEndpoint, providerId } = input; // Made mutable
+
+    // If OpenAI key is available AND the request is for GoogleAI, override to use OpenAI
+    if (process.env.OPENAI_API_KEY && providerId === 'googleai') {
+      console.log(`[processChatMessageFlow] Overriding GoogleAI request to use OpenAI (gpt-4o) due to OPENAI_API_KEY presence.`);
+      providerId = 'openai';
+      modelId = 'gpt-4o'; // Default OpenAI model
+      // apiKey and apiEndpoint for OpenAI will be picked up by the OpenAI SDK path or from env if not passed explicitly
+    }
+    
+    let attemptedModelForError = `${providerId}/${modelId}`; // For error reporting
 
     if (!modelId || !providerId) {
       return { aiResponse: '', error: 'Model ID or Provider ID is missing.' };
     }
     
-    if (providerId === 'openai' && !apiKey) {
-        return { aiResponse: '', error: `API key is required for OpenAI provider.` };
-    }
-    // Retain existing check for other providers that require API key and are not covered by ADC or local.
-    if (!['ollama', 'googleai', 'openai', 'google-vertex', 'aws-bedrock'].includes(providerId) && !apiKey) {
-        return { aiResponse: '', error: `API key is required for provider '${providerId}'.` };
-    }
-
-    try {
-      if (providerId === 'openai') {
-        if (!apiKey) { // Should be caught above, but as a safeguard for clarity
+    if (providerId === 'openai') {
+        const openaiApiKeyToUse = apiKey || process.env.OPENAI_API_KEY;
+        if (!openaiApiKeyToUse) { 
           return { aiResponse: '', error: 'OpenAI API key is missing for direct SDK call.' };
         }
         const openaiClient = new OpenAI({
-          apiKey: apiKey.trim(),
-          baseURL: apiEndpoint?.trim() || undefined, // Use provided endpoint or OpenAI default
+          apiKey: openaiApiKeyToUse.trim(),
+          baseURL: apiEndpoint?.trim() || undefined, 
         });
 
         const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [];
@@ -68,10 +70,13 @@ const processChatMessageFlow = ai.defineFlow(
           messages.push({ role: 'system', content: agentSystemPrompt });
         }
         messages.push({ role: 'user', content: userInput });
+        
+        attemptedModelForError = `OpenAI SDK/${modelId}`;
 
         try {
+          const sdkModelId = modelId.startsWith('openai/') ? modelId.substring('openai/'.length) : modelId;
           const completion = await openaiClient.chat.completions.create({
-            model: modelId, // e.g., "gpt-3.5-turbo", not "openai/gpt-3.5-turbo"
+            model: sdkModelId, 
             messages: messages,
           });
 
@@ -91,14 +96,15 @@ const processChatMessageFlow = ai.defineFlow(
              } else if (e.status === 401) {
                 errorMessage = `OpenAI API Key is invalid, revoked, or does not have permissions for the model '${modelId}'.`;
              } else if (e.status === 429) {
-                errorMessage = `OpenAI API rate limit exceeded. Please try again later.`;
+                errorMessage = `OpenAI API rate limit exceeded (${attemptedModelForError}). Please try again later. Visit https://platform.openai.com/account/limits.`;
              }
           }
           return { aiResponse: '', error: errorMessage };
         }
       } else {
-        // Existing Genkit-based logic for other providers
+        // Genkit-based logic for other providers (Google AI, etc.)
         const qualifiedModelName = modelId.includes('/') ? modelId : `${providerId}/${modelId}`;
+        attemptedModelForError = qualifiedModelName;
         const generateOptions: any = {
           model: qualifiedModelName,
           prompt: userInput,
@@ -111,11 +117,6 @@ const processChatMessageFlow = ai.defineFlow(
         
         if (apiKey && !['googleai', 'google-vertex', 'aws-bedrock', 'ollama'].includes(providerId)) { 
           generateOptions.auth = { apiKey };
-           if(apiEndpoint && providerId === 'some_other_genkit_plugin_needing_endpoint_in_auth') {
-             // Placeholder: Specific Genkit plugins might need endpoint in auth or config
-             // generateOptions.auth.endpoint = apiEndpoint; 
-             // or generateOptions.config.apiBase = apiEndpoint;
-           }
         }
         
         if (providerId === 'googleai' || providerId === 'google-vertex') {
@@ -126,33 +127,41 @@ const processChatMessageFlow = ai.defineFlow(
               { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
           ];
         }
+        
+        try {
+            const response = await ai.generate(generateOptions);
+            const aiResponseText = response.text;
 
-        const response = await ai.generate(generateOptions);
-        const aiResponseText = response.text;
-
-        if (aiResponseText) {
-          return { aiResponse: aiResponseText };
-        } else {
-          return { aiResponse: '', error: 'AI did not return a text response.' };
+            if (aiResponseText) {
+                return { aiResponse: aiResponseText };
+            } else {
+                return { aiResponse: '', error: 'AI did not return a text response.' };
+            }
+        } catch (error: any) {
+            console.error(`Error processing chat message with ${attemptedModelForError} (Genkit path):`, error);
+            let detailedError = error.message || `Failed to get response from ${attemptedModelForError}.`;
+            if (error.message && (error.message.includes('[429 Too Many Requests]') || error.message.includes('429'))) {
+                detailedError = `You've exceeded the current quota for the model (${attemptedModelForError}). Please check your plan and billing details with the AI provider. `;
+                if (providerId === 'googleai' || providerId === 'google-vertex') {
+                  detailedError += `For Google AI, visit: https://ai.google.dev/gemini-api/docs/rate-limits.`;
+                } else {
+                  detailedError += `Please consult the provider's documentation for rate limits.`;
+                }
+            } else if (error.cause && error.cause.message) {
+                detailedError += ` Cause: ${error.cause.message}`;
+            }
+            if (error.details) {
+                detailedError += ` Details: ${JSON.stringify(error.details)}`;
+            }
+            if (error.stack && error.stack.includes("NOT_FOUND")) { 
+                detailedError = `Model '${attemptedModelForError}' not found via Genkit or access denied. Ensure the model ID is correct for the provider and your Genkit plugin is configured.`;
+            }
+            return { 
+                aiResponse: '', 
+                error: detailedError
+            };
         }
       }
-    } catch (error: any) { // Catch-all for broader errors, e.g. Genkit ai.generate issues for non-OpenAI providers
-      console.error(`Error processing chat message with ${providerId}/${modelId} (Genkit path):`, error);
-      let detailedError = error.message || `Failed to get response from ${providerId}/${modelId}.`;
-      if (error.cause && error.cause.message) {
-        detailedError += ` Cause: ${error.cause.message}`;
-      }
-      if (error.details) {
-         detailedError += ` Details: ${JSON.stringify(error.details)}`;
-      }
-      if (error.stack && error.stack.includes("NOT_FOUND")) { // More specific to Genkit model not found
-        detailedError = `Model '${providerId}/${modelId}' not found via Genkit or access denied. Ensure the model ID is correct for the provider and your Genkit plugin is configured.`;
-      }
-      return { 
-        aiResponse: '', 
-        error: detailedError
-      };
     }
-  }
-);
-
+  );
+    
